@@ -2,38 +2,31 @@
 
 namespace App\Models;
 
-use App\Enums\CategoryType;
-use Database\Factories\CategoryFactory;
+use App\Enums\RecurrenceFrequency;
+use Carbon\CarbonImmutable;
+use Database\Factories\ScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int|null $user_id
- * @property string $name
- * @property CategoryType $type
- * @property string|null $color
- * @property string|null $icon
+ * @property bool $is_active
+ * @property RecurrenceFrequency|null $recurrence
+ * @property CarbonImmutable|null $start_date
+ * @property CarbonImmutable|null $end_date
+ * @property int|null $due_day
+ * @property int|null $reminder_days_before
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['user_id', 'name', 'type', 'color', 'icon'])]
-class Category extends Model
+#[Fillable(['is_active', 'recurrence', 'start_date', 'end_date', 'due_day', 'reminder_days_before'])]
+class Schedule extends Model
 {
-    /** @use HasFactory<CategoryFactory> */
+    /** @use HasFactory<ScheduleFactory> */
     use HasFactory;
-
-    /**
-     * @return BelongsTo<User, $this>
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
 
     /**
      * @return HasMany<NeedsItem, $this>
@@ -51,7 +44,10 @@ class Category extends Model
     protected function casts(): array
     {
         return [
-            'type' => CategoryType::class,
+            'is_active' => 'boolean',
+            'recurrence' => RecurrenceFrequency::class,
+            'start_date' => 'date',
+            'end_date' => 'date',
         ];
     }
 }

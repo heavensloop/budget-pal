@@ -16,14 +16,12 @@ return new class extends Migration
             $table->foreignId('budget_month_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('category_id')->constrained()->restrictOnDelete();
+            $table->foreignId('schedule_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
             $table->decimal('amount', 14, 2);
             $table->string('currency_code', 3);
             $table->enum('status', ['pending', 'done', 'skipped'])->default('pending');
-            $table->boolean('is_recurring')->default(false);
-            $table->unsignedBigInteger('recurring_group_id')->nullable()->index();
-            $table->unsignedSmallInteger('recurrence_months_remaining')->nullable();
-            $table->unsignedTinyInteger('reminder_day')->nullable();
+            $table->date('date_due')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });

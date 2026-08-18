@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use App\Enums\ItemStatus;
+use Carbon\CarbonImmutable;
+use Database\Factories\NeedsItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -13,14 +17,12 @@ use Illuminate\Support\Carbon;
  * @property int $budget_month_id
  * @property int $user_id
  * @property int $category_id
+ * @property int|null $schedule_id
  * @property string $name
  * @property string $amount
  * @property string $currency_code
  * @property ItemStatus $status
- * @property bool $is_recurring
- * @property int|null $recurring_group_id
- * @property int|null $recurrence_months_remaining
- * @property int|null $reminder_day
+ * @property CarbonImmutable|null $date_due
  * @property string|null $notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -29,18 +31,19 @@ use Illuminate\Support\Carbon;
     'budget_month_id',
     'user_id',
     'category_id',
+    'schedule_id',
     'name',
     'amount',
     'currency_code',
     'status',
-    'is_recurring',
-    'recurring_group_id',
-    'recurrence_months_remaining',
-    'reminder_day',
+    'date_due',
     'notes',
 ])]
 class NeedsItem extends Model
 {
+    /** @use HasFactory<NeedsItemFactory> */
+    use HasFactory;
+
     /**
      * @return BelongsTo<BudgetMonth, $this>
      */
@@ -66,6 +69,22 @@ class NeedsItem extends Model
     }
 
     /**
+     * @return BelongsTo<Schedule, $this>
+     */
+    public function schedule(): BelongsTo
+    {
+        return $this->belongsTo(Schedule::class);
+    }
+
+    /**
+     * @return MorphOne<BudgetItem, $this>
+     */
+    public function budgetItem(): MorphOne
+    {
+        return $this->morphOne(BudgetItem::class, 'source');
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -75,7 +94,7 @@ class NeedsItem extends Model
         return [
             'amount' => 'decimal:2',
             'status' => ItemStatus::class,
-            'is_recurring' => 'boolean',
+            'date_due' => 'date',
         ];
     }
 }
