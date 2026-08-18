@@ -200,6 +200,19 @@ function destroy(item: NeedItem) {
                 </DialogHeader>
 
                 <div class="grid gap-2">
+                    <Label for="name">Name</Label>
+                    <Input
+                        id="name"
+                        name="name"
+                        :default-value="editingItem?.name"
+                        required
+                    />
+                    <p v-if="errors.name" class="text-xs text-danger">
+                        {{ errors.name }}
+                    </p>
+                </div>
+
+                <div class="grid gap-2">
                     <Label for="category_id">Category</Label>
                     <SearchableComboBox
                         id="category_id"
@@ -210,19 +223,6 @@ function destroy(item: NeedItem) {
                     />
                     <p v-if="errors.category_id" class="text-xs text-danger">
                         {{ errors.category_id }}
-                    </p>
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="name">Name</Label>
-                    <Input
-                        id="name"
-                        name="name"
-                        :default-value="editingItem?.name"
-                        required
-                    />
-                    <p v-if="errors.name" class="text-xs text-danger">
-                        {{ errors.name }}
                     </p>
                 </div>
 
