@@ -51,14 +51,17 @@ const { formatCurrency } = useCurrency();
 
 const dialogOpen = ref(false);
 const editingItem = ref<NeedItem | null>(null);
+const isRecurring = ref(false);
 
 function openCreateDialog() {
     editingItem.value = null;
+    isRecurring.value = false;
     dialogOpen.value = true;
 }
 
 function openEditDialog(item: NeedItem) {
     editingItem.value = item;
+    isRecurring.value = item.isRecurring;
     dialogOpen.value = true;
 }
 
@@ -243,17 +246,15 @@ function destroy(item: NeedItem) {
 
                 <label class="flex items-center gap-2 text-sm">
                     <Checkbox
+                        v-model="isRecurring"
                         name="is_recurring"
                         value="1"
-                        :default-checked="editingItem?.isRecurring ?? false"
                     />
                     Recurring every month
                 </label>
 
-                <div class="grid gap-2">
-                    <Label for="due_day"
-                        >Due day of month (recurring) or leave blank</Label
-                    >
+                <div v-if="isRecurring" class="grid gap-2">
+                    <Label for="due_day">Due day of month</Label>
                     <Input
                         id="due_day"
                         name="due_day"
@@ -264,8 +265,8 @@ function destroy(item: NeedItem) {
                     />
                 </div>
 
-                <div class="grid gap-2">
-                    <Label for="date_due">Due date (one-time items)</Label>
+                <div v-else class="grid gap-2">
+                    <Label for="date_due">Due date</Label>
                     <Input
                         id="date_due"
                         name="date_due"
