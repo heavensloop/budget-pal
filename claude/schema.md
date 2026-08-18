@@ -7,13 +7,21 @@ gets a nullable `schedule_id` instead of `is_recurring` /
 `budget_items` is a real table (not just a DTO) — a per-month, cross-domain
 projection kept in sync by the Actions that mutate the source rows.
 
-## Schedule (new table, polymorphic)
+## Schedule (new table)
 
-Shared by any recurring-capable item via a nullable `schedule_id`:
+**Not polymorphic** — no `schedulable_type`/`schedulable_id`. A single
+Schedule row is referenced by *many* item rows (one per month it
+recurred), so there's no single "owner" to point back to; the working
+link is entirely `needs_items.schedule_id -> schedules.id` (and later
+`wants_items.schedule_id`, `debts.schedule_id`, etc.), the same shared-
+lookup-table pattern as `categories`. An earlier draft of this doc had
+`schedulable_type`/`schedulable_id` here, copied from schema.md's original
+polymorphic sketch without adjusting it for the "layer on top of
+budget_months" model — caught by the first test run (NOT NULL violation
+creating a Schedule with no single owner to assign).
 
-- `schedulable_type`, `schedulable_id` — polymorphic owner
 - `is_active` (boolean) — turn off to stop future carry-forward
-- `recurrence` (nullable string: "monthly", "weekly", "yearly")
+- `recurrence` (nullable string: "monthly", "weekly", "biweekly", "yearly")
 - `start_date` (nullable)
 - `end_date` (nullable)
 - `due_day` (nullable, 1-31)
