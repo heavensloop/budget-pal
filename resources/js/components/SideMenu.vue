@@ -58,7 +58,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
     />
 
     <div
-        class="fixed top-0 left-0 z-50 h-screen w-68.75 flex-none bg-primary text-primary-foreground transition-transform duration-200 xl:sticky xl:translate-x-0"
+        class="fixed top-0 left-0 z-50 h-screen w-68.75 flex-none bg-primary text-primary-foreground transition-transform duration-200 xl:translate-x-0"
         :class="open ? 'translate-x-0' : '-translate-x-full'"
     >
         <div class="flex h-screen flex-col pt-5 pb-8">
