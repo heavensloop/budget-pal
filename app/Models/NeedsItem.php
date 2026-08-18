@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use App\Enums\ItemStatus;
+use App\Enums\SortDirection;
 use Carbon\CarbonImmutable;
 use Database\Factories\NeedsItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,6 +48,11 @@ class NeedsItem extends Model
     use HasFactory;
 
     /**
+     * @var list<string>
+     */
+    public const array SORTABLE_COLUMNS = ['name', 'category', 'amount', 'status'];
+
+    /**
      * @return BelongsTo<BudgetMonth, $this>
      */
     public function budgetMonth(): BelongsTo
@@ -82,6 +90,28 @@ class NeedsItem extends Model
     public function budgetItem(): MorphOne
     {
         return $this->morphOne(BudgetItem::class, 'source');
+    }
+
+    /**
+     * @param  Builder<NeedsItem>  $query
+     */
+    #[Scope]
+    protected function sortable(Builder $query, string $column, SortDirection $direction): void
+    {
+        if (! in_array($column, self::SORTABLE_COLUMNS, true)) {
+            $column = 'name';
+        }
+
+        if ($column === 'category') {
+            $query->orderBy(
+                Category::select('name')->whereColumn('categories.id', 'needs_items.category_id'),
+                $direction->value,
+            );
+
+            return;
+        }
+
+        $query->orderBy($column, $direction->value);
     }
 
     /**

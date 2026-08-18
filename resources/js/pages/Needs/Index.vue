@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import { Pencil, Plus, Trash2 } from '@lucide/vue';
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
 import SearchableComboBox from '@/components/SearchableComboBox.vue';
@@ -36,13 +36,42 @@ type NeedItem = {
     notes: string | null;
 };
 
+type SortColumn = 'name' | 'category' | 'amount' | 'status';
+
 const page = usePage<{
     currentMonth: CurrentMonth;
     categories: Category[];
     items: NeedItem[];
+    sort: SortColumn;
+    direction: 'asc' | 'desc';
 }>();
 
 const { formatCurrency } = useCurrency();
+
+const sortableColumns: { key: SortColumn; label: string }[] = [
+    { key: 'name', label: 'Item' },
+    { key: 'category', label: 'Category' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'status', label: 'Status' },
+];
+
+function sortBy(column: SortColumn) {
+    const direction =
+        page.props.sort === column && page.props.direction === 'asc'
+            ? 'desc'
+            : 'asc';
+
+    router.get(
+        window.location.pathname,
+        {
+            year: page.props.currentMonth.year,
+            month: page.props.currentMonth.month,
+            sort: column,
+            direction,
+        },
+        { preserveState: true, preserveScroll: true },
+    );
+}
 
 const dialogOpen = ref(false);
 const editingItem = ref<NeedItem | null>(null);
@@ -130,10 +159,38 @@ function destroy(item: NeedItem) {
                     <tr
                         class="border-b border-foreground/10 text-xs uppercase opacity-60"
                     >
-                        <th class="p-3 font-medium">Item</th>
-                        <th class="p-3 font-medium">Category</th>
-                        <th class="p-3 font-medium">Amount</th>
-                        <th class="p-3 font-medium">Status</th>
+                        <th
+                            v-for="column in sortableColumns"
+                            :key="column.key"
+                            class="p-3 font-medium"
+                        >
+                            <button
+                                type="button"
+                                class="flex items-center gap-1 uppercase hover:opacity-100"
+                                :class="
+                                    page.props.sort === column.key
+                                        ? 'opacity-100'
+                                        : 'opacity-70'
+                                "
+                                @click="sortBy(column.key)"
+                            >
+                                {{ column.label }}
+                                <ArrowUp
+                                    v-if="
+                                        page.props.sort === column.key &&
+                                        page.props.direction === 'asc'
+                                    "
+                                    class="size-3"
+                                />
+                                <ArrowDown
+                                    v-else-if="
+                                        page.props.sort === column.key &&
+                                        page.props.direction === 'desc'
+                                    "
+                                    class="size-3"
+                                />
+                            </button>
+                        </th>
                         <th class="p-3 font-medium"></th>
                     </tr>
                 </thead>

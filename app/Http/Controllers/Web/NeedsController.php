@@ -9,6 +9,7 @@ use App\Actions\Budget\UpdateNeedsItem;
 use App\Enums\CategoryType;
 use App\Enums\ItemStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Needs\ShowNeedsRequest;
 use App\Http\Requests\Needs\StoreNeedsItemRequest;
 use App\Http\Requests\Needs\UpdateNeedsItemRequest;
 use App\Models\Category;
@@ -24,16 +25,17 @@ class NeedsController extends Controller
 {
     public function __construct(private readonly GenerateNextBudgetMonth $generateNextBudgetMonth) {}
 
-    public function index(Request $request): Response
+    public function index(ShowNeedsRequest $request): Response
     {
-        $year = $request->integer('year', now()->year);
-        $month = $request->integer('month', now()->month);
-
+        $year = $request->getYear();
+        $month = $request->getMonth();
         $budgetMonth = ($this->generateNextBudgetMonth)($request->user(), $year, $month);
+        $sort = $request->getSortField('name');
+        $direction = $request->getSortDirection();
 
         $items = $budgetMonth->needsItems()
             ->with(['category', 'schedule'])
-            ->latest()
+            ->sortable($sort, $direction)
             ->get()
             ->map(fn (NeedsItem $item) => [
                 'id' => $item->id,
@@ -60,6 +62,8 @@ class NeedsController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'items' => $items,
+            'sort' => $sort,
+            'direction' => $direction->value,
         ]);
     }
 

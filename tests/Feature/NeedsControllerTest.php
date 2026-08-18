@@ -233,4 +233,196 @@ class NeedsControllerTest extends TestCase
         $response->assertRedirect();
         $this->assertSame(ItemStatus::Done, $item->fresh()->status);
     }
+
+    public function test_index_sorts_by_name()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Zebra',
+        ]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Apple',
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('needs.index', ['year' => 2026, 'month' => 3, 'sort' => 'name', 'direction' => 'asc']),
+        );
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.name', 'Apple')
+            ->where('items.1.name', 'Zebra')
+            ->where('sort', 'name')
+            ->where('direction', 'asc'),
+        );
+    }
+
+    public function test_index_sorts_by_name_descending()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Zebra',
+        ]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Apple',
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('needs.index', ['year' => 2026, 'month' => 3, 'sort' => 'name', 'direction' => 'desc']),
+        );
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.name', 'Zebra')
+            ->where('items.1.name', 'Apple'),
+        );
+    }
+
+    public function test_index_sorts_by_amount()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'amount' => 50000,
+        ]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'amount' => 5000,
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('needs.index', ['year' => 2026, 'month' => 3, 'sort' => 'amount', 'direction' => 'asc']),
+        );
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.amount', 5000)
+            ->where('items.1.amount', 50000),
+        );
+    }
+
+    public function test_index_sorts_by_category_name()
+    {
+        $user = User::factory()->create();
+        $zCategory = Category::factory()->create(['name' => 'Zzz Category']);
+        $aCategory = Category::factory()->create(['name' => 'Aaa Category']);
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $zCategory->id,
+            'name' => 'First',
+        ]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $aCategory->id,
+            'name' => 'Second',
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('needs.index', ['year' => 2026, 'month' => 3, 'sort' => 'category', 'direction' => 'asc']),
+        );
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.category', 'Aaa Category')
+            ->where('items.1.category', 'Zzz Category'),
+        );
+    }
+
+    public function test_index_sorts_by_status()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Pending item',
+            'status' => ItemStatus::Pending,
+        ]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Done item',
+            'status' => ItemStatus::Done,
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('needs.index', ['year' => 2026, 'month' => 3, 'sort' => 'status', 'direction' => 'asc']),
+        );
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.status', 'done')
+            ->where('items.1.status', 'pending'),
+        );
+    }
+
+    public function test_index_falls_back_to_name_for_an_invalid_sort_column()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('needs.index', ['year' => 2026, 'month' => 3, 'sort' => 'notes']),
+        );
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page->where('sort', 'name'));
+    }
+
+    public function test_index_defaults_to_name_ascending_when_no_sort_is_given()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 3]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Zebra',
+        ]);
+        NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'name' => 'Apple',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('needs.index', ['year' => 2026, 'month' => 3]));
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.name', 'Apple')
+            ->where('items.1.name', 'Zebra')
+            ->where('sort', 'name')
+            ->where('direction', 'asc'),
+        );
+    }
 }
