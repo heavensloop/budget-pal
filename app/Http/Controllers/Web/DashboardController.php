@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Actions\Budget\GenerateNextBudgetMonth;
 use App\Enums\ItemStatus;
 use App\Http\Controllers\Controller;
-use App\Models\BudgetMonth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -12,16 +12,14 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly GenerateNextBudgetMonth $generateNextBudgetMonth) {}
+
     public function __invoke(Request $request): Response
     {
         $year = $request->integer('year', now()->year);
         $month = $request->integer('month', now()->month);
 
-        $budgetMonth = BudgetMonth::firstOrCreate([
-            'user_id' => $request->user()->id,
-            'year' => $year,
-            'month' => $month,
-        ]);
+        $budgetMonth = ($this->generateNextBudgetMonth)($request->user(), $year, $month);
 
         $needsItems = $budgetMonth->needsItems()->with('category')->latest()->get();
 
