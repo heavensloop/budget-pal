@@ -153,6 +153,34 @@ class NeedsControllerTest extends TestCase
         $this->assertSame('50000.00', $februaryItem->fresh()->amount);
     }
 
+    public function test_update_sets_a_recurring_due_day_sent_as_a_string_by_the_form()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true, 'due_day' => null]);
+        $budgetMonth = BudgetMonth::factory()->create(['user_id' => $user->id, 'year' => 2026, 'month' => 2]);
+        $item = NeedsItem::factory()->create([
+            'budget_month_id' => $budgetMonth->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'schedule_id' => $schedule->id,
+            'date_due' => null,
+        ]);
+
+        // Real form submissions arrive as strings, unlike PHP-array test payloads.
+        $response = $this->actingAs($user)->put(route('needs.update', $item), [
+            'category_id' => (string) $category->id,
+            'name' => $item->name,
+            'amount' => (string) $item->amount,
+            'is_recurring' => '1',
+            'due_day' => '15',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(15, $schedule->fresh()->due_day);
+        $this->assertSame('2026-02-15', $item->fresh()->budgetItem->date_due->toDateString());
+    }
+
     public function test_update_turning_off_recurring_deactivates_the_schedule()
     {
         $user = User::factory()->create();
