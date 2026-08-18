@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useCurrency } from '@/composables/useCurrency';
 import type { CurrentMonth } from '@/composables/useMonthSelector';
 
@@ -332,13 +333,12 @@ function destroy(item: NeedItem) {
 
                 <div class="grid gap-2">
                     <Label for="notes">Notes</Label>
-                    <textarea
+                    <Textarea
                         id="notes"
                         name="notes"
                         rows="2"
                         :default-value="editingItem?.notes ?? undefined"
-                        class="rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    ></textarea>
+                    />
                 </div>
 
                 <DialogFooter>
