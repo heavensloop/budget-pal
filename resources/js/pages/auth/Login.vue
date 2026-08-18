@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { Lock, Mail } from '@lucide/vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -53,16 +54,22 @@ defineProps<{
         <div class="grid gap-6">
             <div class="grid gap-2">
                 <Label for="email">Email address</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    name="email"
-                    required
-                    autofocus
-                    :tabindex="1"
-                    autocomplete="email"
-                    placeholder="email@example.com"
-                />
+                <div class="relative">
+                    <Mail
+                        class="absolute top-1/2 left-3 size-4 -translate-y-1/2 opacity-40"
+                    />
+                    <Input
+                        id="email"
+                        type="email"
+                        name="email"
+                        required
+                        autofocus
+                        :tabindex="1"
+                        autocomplete="email"
+                        placeholder="email@example.com"
+                        class="pl-9"
+                    />
+                </div>
                 <InputError :message="errors.email" />
             </div>
 
@@ -78,14 +85,20 @@ defineProps<{
                         Forgot your password?
                     </TextLink>
                 </div>
-                <PasswordInput
-                    id="password"
-                    name="password"
-                    required
-                    :tabindex="2"
-                    autocomplete="current-password"
-                    placeholder="Password"
-                />
+                <div class="relative">
+                    <Lock
+                        class="absolute top-1/2 left-3 size-4 -translate-y-1/2 opacity-40"
+                    />
+                    <PasswordInput
+                        id="password"
+                        name="password"
+                        required
+                        :tabindex="2"
+                        autocomplete="current-password"
+                        placeholder="Password"
+                        class="pl-9"
+                    />
+                </div>
                 <InputError :message="errors.password" />
             </div>
 

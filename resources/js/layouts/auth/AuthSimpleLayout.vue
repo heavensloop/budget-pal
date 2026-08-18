@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import BrandMark from '@/components/BrandMark.vue';
 import { home } from '@/routes';
 
 defineProps<{
@@ -11,33 +11,26 @@ defineProps<{
 
 <template>
     <div
-        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
+        class="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10"
     >
-        <div class="w-full max-w-sm">
-            <div class="flex flex-col gap-8">
-                <div class="flex flex-col items-center gap-4">
-                    <Link
-                        :href="home()"
-                        class="flex flex-col items-center gap-2 font-medium"
-                    >
-                        <div
-                            class="mb-1 flex h-9 w-9 items-center justify-center rounded-md"
-                        >
-                            <AppLogoIcon
-                                class="size-9 fill-current text-[var(--foreground)] dark:text-white"
-                            />
-                        </div>
-                        <span class="sr-only">{{ title }}</span>
-                    </Link>
-                    <div class="space-y-2 text-center">
-                        <h1 class="text-xl font-medium">{{ title }}</h1>
-                        <p class="text-center text-sm text-muted-foreground">
-                            {{ description }}
-                        </p>
-                    </div>
+        <div class="box w-full max-w-105 p-9 shadow-2xl shadow-primary/20">
+            <Link
+                :href="home()"
+                class="mb-7 flex flex-col items-center gap-2.5"
+            >
+                <BrandMark class="size-14 text-primary" />
+                <div class="text-xl font-extrabold tracking-tight">
+                    <span class="text-primary">Budget</span>
+                    <span class="text-pending">Pal</span>
                 </div>
-                <slot />
+            </Link>
+
+            <div class="mb-7 space-y-1 text-center">
+                <h1 class="text-xl font-extrabold">{{ title }}</h1>
+                <p class="text-sm opacity-60">{{ description }}</p>
             </div>
+
+            <slot />
         </div>
     </div>
 </template>

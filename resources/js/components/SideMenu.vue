@@ -11,6 +11,7 @@ import {
     Settings,
     ShoppingBag,
 } from '@lucide/vue';
+import BrandMark from '@/components/BrandMark.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import { edit as editProfile } from '@/routes/profile';
@@ -65,24 +66,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                 :href="dashboard()"
                 class="flex h-16.25 flex-none items-center px-6"
             >
-                <svg class="size-6" viewBox="0 0 400 220" fill="none">
-                    <circle
-                        cx="200"
-                        cy="110"
-                        r="65"
-                        stroke="#fff"
-                        stroke-width="40"
-                    />
-                    <rect
-                        x="70"
-                        y="165"
-                        width="260"
-                        height="40"
-                        rx="20"
-                        ry="20"
-                        fill="#fff"
-                    />
-                </svg>
+                <BrandMark class="size-6" />
                 <div class="ml-3.5 text-nowrap">
                     <span class="text-base font-medium">Budget</span>
                     <span class="text-base font-light">Pal</span>
