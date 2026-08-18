@@ -3,6 +3,8 @@ import { Form, Head, router, usePage } from '@inertiajs/vue3';
 import { Pencil, Plus, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
+import SearchableComboBox from '@/components/SearchableComboBox.vue';
+import type { SearchableComboBoxOption } from '@/components/SearchableComboBox.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,13 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { useCurrency } from '@/composables/useCurrency';
 import type { CurrentMonth } from '@/composables/useMonthSelector';
 
@@ -52,16 +47,29 @@ const { formatCurrency } = useCurrency();
 const dialogOpen = ref(false);
 const editingItem = ref<NeedItem | null>(null);
 const isRecurring = ref(false);
+const selectedCategory = ref<SearchableComboBoxOption | null>(null);
+
+const categoryOptions = computed(() =>
+    page.props.categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+    })),
+);
 
 function openCreateDialog() {
     editingItem.value = null;
     isRecurring.value = false;
+    selectedCategory.value = null;
     dialogOpen.value = true;
 }
 
 function openEditDialog(item: NeedItem) {
     editingItem.value = item;
     isRecurring.value = item.isRecurring;
+    selectedCategory.value =
+        categoryOptions.value.find(
+            (option) => option.value === item.categoryId,
+        ) ?? null;
     dialogOpen.value = true;
 }
 
@@ -193,23 +201,13 @@ function destroy(item: NeedItem) {
 
                 <div class="grid gap-2">
                     <Label for="category_id">Category</Label>
-                    <Select
+                    <SearchableComboBox
+                        id="category_id"
+                        v-model="selectedCategory"
                         name="category_id"
-                        :default-value="String(editingItem?.categoryId ?? '')"
-                    >
-                        <SelectTrigger id="category_id" class="w-full">
-                            <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem
-                                v-for="category in page.props.categories"
-                                :key="category.id"
-                                :value="String(category.id)"
-                            >
-                                {{ category.name }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                        :options="categoryOptions"
+                        placeholder="Search categories..."
+                    />
                     <p v-if="errors.category_id" class="text-xs text-danger">
                         {{ errors.category_id }}
                     </p>
