@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'type', 'color', 'icon'])]
+#[Fillable(['user_id', 'name', 'type', 'color', 'icon'])]
 class Category extends Model
 {
     /**

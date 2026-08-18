@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['year', 'month', 'wants_budget_cap'])]
+#[Fillable(['user_id', 'year', 'month', 'wants_budget_cap'])]
 class BudgetMonth extends Model
 {
     /**

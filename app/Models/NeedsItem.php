@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
+    'budget_month_id',
+    'user_id',
     'category_id',
     'name',
     'amount',
