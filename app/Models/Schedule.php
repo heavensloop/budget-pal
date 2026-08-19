@@ -48,6 +48,8 @@ class Schedule extends Model
             'recurrence' => RecurrenceFrequency::class,
             'start_date' => 'date',
             'end_date' => 'date',
+            'due_day' => 'integer',
+            'reminder_days_before' => 'integer',
         ];
     }
 }

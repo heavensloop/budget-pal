@@ -1,11 +1,21 @@
 # Schema: full domain model
 
 `budget_months` stays as the materialized per-month container (see
-`schema.mermaid` / `schema-erd.png`). Every recurring-capable domain item
-gets a nullable `schedule_id` instead of `is_recurring` /
-`recurring_group_id` / `recurrence_months_remaining` / `reminder_day`.
-`budget_items` is a real table (not just a DTO) — a per-month, cross-domain
-projection kept in sync by the Actions that mutate the source rows.
+`schema.mermaid` / `schema-erd.png`) for domains that use it. Every
+recurring-capable domain item gets a nullable `schedule_id` instead of
+`is_recurring` / `recurring_group_id` / `recurrence_months_remaining` /
+`reminder_day`.
+
+**Needs is the exception**: auto-generating a `BudgetMonth` per page visit
+caused enough issues that `needs_items` was decoupled from `BudgetMonth`
+entirely (no `budget_month_id`, no per-month carry-forward row) — see the
+Needs section below. Wants/Debts/Savings/Incoming/Additional are all
+still unbuilt and still designed against the original per-month
+`budget_month_id` pattern described here; that design hasn't been
+revisited for them yet.
+
+`BudgetItem` is a plain DTO (for now), not a persisted table — see the
+bottom of this doc.
 
 ## Schedule (new table)
 
@@ -32,7 +42,11 @@ Every month's materialized row for the same recurring item shares the same
 `GenerateNextBudgetMonth` finds rows in the latest month with a
 `schedule_id` set and `schedule.is_active`, copies each into the new month
 with the same `schedule_id`, amount carried forward, status reset to
-pending.
+pending. **No longer true for Needs**: a recurring Need is now a single
+permanent `needs_items` row (no monthly duplication) with its next due
+date computed on the fly from `schedule.due_day` — see `NeedsItem::nextPaymentDate()`.
+`GenerateNextBudgetMonth` is kept only as a plain `BudgetMonth::firstOrCreate`,
+not called anywhere yet.
 
 ## Categories (unchanged)
 
@@ -45,12 +59,26 @@ pending.
 
 ## Needs (`needs_items`)
 
-- `budget_month_id`, `user_id`, `category_id` (all FK, not null)
+**Not month-scoped** — no `budget_month_id`. A Need is a flat, permanent
+row (recurring or one-time) that exists independent of any calendar
+month; there's no month navigation on the Needs page and nothing
+auto-generates a `BudgetMonth` for it.
+
+- `user_id`, `category_id` (all FK, not null)
 - `schedule_id` (nullable FK) — null means one-time
-- `name`, `amount`, `currency_code`, `status` (pending/done/skipped)
+- `name`, `amount`, `currency_code`
+- `status`: `pending`/`done`/`skipped`/`archived` — its own
+  `NeedsItemStatus` enum, distinct from the shared `ItemStatus` enum other
+  domains use, since "archived" is Needs-specific
 - `date_due` (nullable date) — one-time items with a specific date;
-  recurring items get their due date from `schedule.due_day`
+  recurring items get their due date from `schedule.due_day`, computed
+  fresh each time via `NeedsItem::nextPaymentDate()` (next upcoming
+  occurrence from today, rolling into next month once this month's has
+  passed)
 - `notes`
+
+Archived Needs are excluded from the default index listing; a
+`show_archived=1` query param includes them in a separate section.
 
 ## Wants (`wants_items`)
 
@@ -103,30 +131,21 @@ Unchanged — one-time by nature, no schedule:
 - `budget_month_id`, `user_id` (FK, not null)
 - `name`, `amount`, `type` (additional/unplanned_budget), `status`, `notes`
 
-## BudgetItem (new table, not a DTO)
+## BudgetItem (DTO, not a table — for now)
 
-A per-month, cross-domain projection for fast unified querying (dashboard,
-Review & Insights). Pure derived cache — **never edited directly**; the
-source row is always authoritative.
+Originally a persisted, per-month, cross-domain projection table kept in
+sync by a `SyncBudgetItem` Action on every source-row mutation. Retired:
+`budget_items` had zero readers anywhere in the app, and once Needs (its
+only writer) decoupled from `BudgetMonth`, the sync mechanism no longer
+had a month to key off. `app/Models/BudgetItem.php`, the `budget_items`
+migration, and `SyncBudgetItem` are all deleted.
 
-- `budget_month_id` (FK, not null) — `BudgetMonth hasMany BudgetItems`
-- `source_type`, `source_id` (polymorphic) — points back to the originating
-  `needs_items` / `wants_items` / `savings_contributions` / `incoming_items`
-  / `additional_items` row
-- `type` (needs/wants/debts/savings/incoming/additional) — display category
-- `name`, `amount`, `currency_code`
-- `status` — mirrored from the source row
-- `date_due` (nullable)
-- `message` (nullable) — computed display text, e.g. "Due on the 1st of
-  the month"
-
-**Sync mechanism:** explicit, not a model observer. Every Action
-that creates/updates/deletes a source row (`CreateNeedsItem`,
-`UpdateNeedsItem`, `DeleteNeedsItem`, `MarkItemStatus`, ...) ends by calling
-a shared `SyncBudgetItem` Action for that row. `GenerateNextBudgetMonth`
-calls it once per row it generates. Marking something "done" from a
-unified list always resolves back to the source row via `source_type`/
-`source_id` and runs through the normal `MarkItemStatus` Action — never
-writes `budget_items.status` directly. Debts don't get their own
-`budget_items` row; a debt's monthly installment shows up via its linked
-`wants_items` row instead.
+`App\DataTransferObjects\BudgetItem` is a plain `final readonly class`
+(`type`, `sourceId`, `name`, `amount`, `currencyCode`, `status`, `dateDue`,
+`message`) — the same shape minus persistence plumbing (`id`,
+`budget_month_id`, timestamps). Nothing constructs one yet; it exists as
+the shape a future unified dashboard/Review pass can build against
+on-demand from each domain's own rows, rather than a table that has to be
+kept in sync. How that future pass actually assembles a unified list
+across domains (query each table and merge? something else?) hasn't been
+decided.

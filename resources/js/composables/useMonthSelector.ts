@@ -1,7 +1,6 @@
 import { router } from '@inertiajs/vue3';
 import { computed, unref } from 'vue';
 import type { Ref } from 'vue';
-import { dashboard } from '@/routes';
 
 export type CurrentMonth = {
     year: number;
@@ -15,8 +14,14 @@ export function useMonthSelector(
 ) {
     const label = computed(() => unref(currentMonth)?.label ?? '');
 
+    /**
+     * Stays on whichever page the switcher is used from (Dashboard, Needs,
+     * ...) - only the year/month query params change.
+     */
     function visit(year: number, month: number) {
-        router.visit(dashboard.url({ query: { year, month } }), {
+        const path = window.location.pathname;
+
+        router.visit(`${path}?year=${year}&month=${month}`, {
             preserveState: true,
             preserveScroll: true,
         });
