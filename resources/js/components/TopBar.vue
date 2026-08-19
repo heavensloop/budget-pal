@@ -69,7 +69,7 @@ function handleLogout() {
             </button>
         </div>
 
-        <NotificationsDropdown />
+        <NotificationsDropdown class="ml-auto" />
 
         <div class="group/profile relative size-9 flex-none">
             <div
@@ -90,14 +90,14 @@ function handleLogout() {
                     <div class="h-px bg-foreground/5" />
                     <div class="flex flex-col gap-0.5">
                         <Link
-                            class="-mx-3 flex gap-2.5 rounded-lg px-4 py-1.5 hover:bg-foreground/5"
+                            class="-mx-3 flex items-center gap-2.5 rounded-lg px-4 py-1.5 hover:bg-foreground/5"
                             :href="editProfile()"
                         >
                             <User class="size-4 stroke-[1.5]" />
                             Profile
                         </Link>
                         <Link
-                            class="-mx-3 flex gap-2.5 rounded-lg px-4 py-1.5 hover:bg-foreground/5"
+                            class="-mx-3 flex items-center gap-2.5 rounded-lg px-4 py-1.5 hover:bg-foreground/5"
                             :href="editProfile()"
                         >
                             <Settings class="size-4 stroke-[1.5]" />
@@ -107,7 +107,7 @@ function handleLogout() {
                     <div class="h-px bg-foreground/5" />
                     <div class="flex flex-col gap-0.5">
                         <Link
-                            class="-mx-3 flex gap-2.5 rounded-lg px-4 py-1.5 hover:bg-foreground/5"
+                            class="-mx-3 flex items-center gap-2.5 rounded-lg px-4 py-1.5 hover:bg-foreground/5"
                             :href="logout()"
                             as="button"
                             @click="handleLogout"
