@@ -95,7 +95,7 @@ function onArchiveOrRestore(item: NeedItem) {
                         >
                             <button
                                 type="button"
-                                class="flex items-center gap-1 uppercase hover:opacity-100"
+                                class="flex cursor-pointer items-center gap-1 uppercase hover:opacity-100"
                                 :class="
                                     props.sort === column.key
                                         ? 'opacity-100'
@@ -155,14 +155,14 @@ function onArchiveOrRestore(item: NeedItem) {
                             <div class="flex justify-end gap-1">
                                 <button
                                     type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
                                     @click="emit('edit', item)"
                                 >
                                     <Pencil class="size-4 opacity-60" />
                                 </button>
                                 <button
                                     type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
                                     :title="
                                         item.status === 'archived'
                                             ? 'Restore'
@@ -178,7 +178,7 @@ function onArchiveOrRestore(item: NeedItem) {
                                 </button>
                                 <button
                                     type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
                                     @click="emit('destroy', item)"
                                 >
                                     <Trash2 class="size-4 text-danger" />
@@ -244,14 +244,14 @@ function onArchiveOrRestore(item: NeedItem) {
                     <div class="flex gap-1">
                         <button
                             type="button"
-                            class="rounded-lg p-1.5 hover:bg-foreground/5"
+                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
                             @click="emit('edit', item)"
                         >
                             <Pencil class="size-4 opacity-60" />
                         </button>
                         <button
                             type="button"
-                            class="rounded-lg p-1.5 hover:bg-foreground/5"
+                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
                             :title="
                                 item.status === 'archived'
                                     ? 'Restore'
@@ -267,7 +267,7 @@ function onArchiveOrRestore(item: NeedItem) {
                         </button>
                         <button
                             type="button"
-                            class="rounded-lg p-1.5 hover:bg-foreground/5"
+                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
                             @click="emit('destroy', item)"
                         >
                             <Trash2 class="size-4 text-danger" />
