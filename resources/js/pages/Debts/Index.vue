@@ -42,8 +42,16 @@ const totalBalanceOwed = computed(() =>
     page.props.items.reduce((sum, item) => sum + item.balance, 0),
 );
 
+// Debts already paid for the currently active period (canRecordPayment is
+// false because of last_payment_date, not because the balance hit 0 -
+// paid-off debts are archived and excluded from `items` already) don't
+// need another payment until the next period, so they're excluded here.
+const itemsAwaitingPayment = computed(() =>
+    page.props.items.filter((item) => item.canRecordPayment),
+);
+
 const nextPaymentTotal = computed(() =>
-    page.props.items.reduce((sum, item) => sum + item.amount, 0),
+    itemsAwaitingPayment.value.reduce((sum, item) => sum + item.amount, 0),
 );
 
 const debtsCurrencyCode = computed(
@@ -215,8 +223,8 @@ function destroy(item: DebtItem) {
             <StatCard
                 :icon="Banknote"
                 :value="formatCurrency(nextPaymentTotal, debtsCurrencyCode)"
-                label="Next Payment Total"
-                :badge-text="`${page.props.items.length} item(s)`"
+                label="Next Repayment Total"
+                :badge-text="`${itemsAwaitingPayment.length} item(s)`"
             />
 
             <div class="box p-6">
@@ -316,7 +324,7 @@ function destroy(item: DebtItem) {
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="amount">Payment amount</Label>
+                    <Label for="amount">Repayment Amount</Label>
                     <Input
                         id="amount"
                         name="amount"

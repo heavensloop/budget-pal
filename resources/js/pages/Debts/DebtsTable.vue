@@ -154,7 +154,7 @@ function onArchiveOrRestore(item: DebtItem) {
                                 />
                             </button>
                         </th>
-                        <th class="p-3 font-medium">Next Payment</th>
+                        <th class="p-3 font-medium">Next Repayment</th>
                         <th class="p-3 font-medium"></th>
                     </tr>
                 </thead>
