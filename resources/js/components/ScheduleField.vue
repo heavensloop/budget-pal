@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { CalendarPlus, Pencil } from '@lucide/vue';
+import { RadioGroupItem, RadioGroupRoot } from 'reka-ui';
 import { reactive, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export type RecurrenceFrequency = 'monthly' | 'weekly' | 'biweekly' | 'yearly';
 
@@ -226,16 +226,26 @@ function summaryText(value: {
             v-else
             class="grid gap-3 rounded-lg border border-foreground/10 p-3"
         >
-            <RadioGroup v-model="local.recurrence">
-                <label
+            <RadioGroupRoot
+                v-model="local.recurrence"
+                class="flex flex-col gap-1.5"
+            >
+                <RadioGroupItem
                     v-for="option in recurrenceOptions"
                     :key="option.value"
-                    class="flex items-center gap-2 text-sm"
+                    :value="option.value"
+                    class="group flex w-full items-center gap-3 rounded-lg bg-foreground/5 px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors duration-150 outline-none hover:bg-foreground/10 focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
-                    <RadioGroupItem :value="option.value" />
+                    <span
+                        class="flex size-4 shrink-0 items-center justify-center rounded-full border border-foreground/30 transition-colors duration-150 group-data-[state=checked]:border-primary group-data-[state=checked]:bg-primary"
+                    >
+                        <span
+                            class="size-1.5 rounded-full bg-primary-foreground opacity-0 transition-opacity duration-150 group-data-[state=checked]:opacity-100"
+                        />
+                    </span>
                     {{ option.label }}
-                </label>
-            </RadioGroup>
+                </RadioGroupItem>
+            </RadioGroupRoot>
 
             <div class="grid gap-2">
                 <Label :for="`${name}-start-date`">

@@ -14,10 +14,10 @@ async function selectRecurrenceOption(
     label: string,
 ) {
     const target = wrapper
-        .findAll('label')
-        .find((candidate) => candidate.text().includes(label));
+        .findAll('[role="radio"]')
+        .find((candidate) => candidate.text() === label);
 
-    await target?.get('[role="radio"]').trigger('click');
+    await target?.trigger('click');
 }
 
 describe('ScheduleField', () => {
