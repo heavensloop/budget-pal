@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import { Archive, ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from '@lucide/vue';
+import {
+    Archive,
+    ArchiveRestore,
+    ArrowDown,
+    ArrowUp,
+    Pencil,
+    Plus,
+    Trash2,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
 import SearchableComboBox from '@/components/SearchableComboBox.vue';
@@ -41,7 +49,6 @@ type SortColumn = 'name' | 'category' | 'amount';
 const page = usePage<{
     categories: Category[];
     items: NeedItem[];
-    archivedItems: NeedItem[];
     sort: SortColumn;
     direction: 'asc' | 'desc';
     showArchived: boolean;
@@ -135,6 +142,14 @@ function archiveItem(item: NeedItem) {
     );
 }
 
+function restoreItem(item: NeedItem) {
+    router.patch(
+        NeedsController.updateStatus(item.id).url,
+        { status: 'pending' },
+        { preserveScroll: true },
+    );
+}
+
 function destroy(item: NeedItem) {
     if (!confirm(`Delete "${item.name}"?`)) {
         return;
@@ -213,7 +228,15 @@ function destroy(item: NeedItem) {
                         :key="item.id"
                         class="border-b border-foreground/5 last:border-0"
                     >
-                        <td class="p-3">{{ item.name }}</td>
+                        <td class="p-3">
+                            {{ item.name }}
+                            <span
+                                v-if="item.status === 'archived'"
+                                class="ml-2 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium opacity-60"
+                            >
+                                Archived
+                            </span>
+                        </td>
                         <td class="p-3 opacity-70">{{ item.category }}</td>
                         <td class="p-3">
                             {{ formatCurrency(item.amount, item.currencyCode) }}
@@ -236,6 +259,16 @@ function destroy(item: NeedItem) {
                                     <Pencil class="size-4 opacity-60" />
                                 </button>
                                 <button
+                                    v-if="item.status === 'archived'"
+                                    type="button"
+                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    title="Restore"
+                                    @click="restoreItem(item)"
+                                >
+                                    <ArchiveRestore class="size-4 opacity-60" />
+                                </button>
+                                <button
+                                    v-else
                                     type="button"
                                     class="rounded-lg p-1.5 hover:bg-foreground/5"
                                     title="Archive"
@@ -258,67 +291,6 @@ function destroy(item: NeedItem) {
         </div>
         <div v-else class="box py-12 text-center text-sm opacity-50">
             No needs yet
-        </div>
-    </div>
-
-    <div v-if="page.props.showArchived" class="mb-10">
-        <h2 class="mb-3 text-lg font-medium opacity-70">Archived</h2>
-        <div
-            v-if="page.props.archivedItems.length"
-            class="box overflow-x-auto p-2"
-        >
-            <table class="w-full text-left">
-                <thead>
-                    <tr
-                        class="border-b border-foreground/10 text-xs uppercase opacity-60"
-                    >
-                        <th class="p-3 font-medium">Item</th>
-                        <th class="p-3 font-medium">Category</th>
-                        <th class="p-3 font-medium">Amount</th>
-                        <th class="p-3 font-medium">Next payment date</th>
-                        <th class="p-3 font-medium"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="item in page.props.archivedItems"
-                        :key="item.id"
-                        class="border-b border-foreground/5 last:border-0"
-                    >
-                        <td class="p-3">{{ item.name }}</td>
-                        <td class="p-3 opacity-70">{{ item.category }}</td>
-                        <td class="p-3">
-                            {{ formatCurrency(item.amount, item.currencyCode) }}
-                        </td>
-                        <td class="p-3">
-                            <span class="text-xs font-medium opacity-60">
-                                Archived
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            <div class="flex justify-end gap-1">
-                                <button
-                                    type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
-                                    @click="openEditDialog(item)"
-                                >
-                                    <Pencil class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
-                                    @click="destroy(item)"
-                                >
-                                    <Trash2 class="size-4 text-danger" />
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div v-else class="box py-12 text-center text-sm opacity-50">
-            No archived needs
         </div>
     </div>
 

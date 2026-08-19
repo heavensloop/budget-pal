@@ -32,18 +32,11 @@ class NeedsController extends Controller
             ->with(['category', 'schedule'])
             ->sortable($sort, $direction);
 
-        $items = (clone $query)
-            ->where('status', '!=', NeedsItemStatus::Archived)
-            ->get()
-            ->map($this->mapItem(...));
+        if (! $showArchived) {
+            $query->where('status', '!=', NeedsItemStatus::Archived);
+        }
 
-        $archivedItems = match($showArchived) {
-            true => (clone $query)
-                ->where('status', NeedsItemStatus::Archived)
-                ->get()
-                ->map($this->mapItem(...)),
-            false => collect(),
-        };
+        $items = $query->get()->map($this->mapItem(...));
 
         return Inertia::render('Needs/Index', [
             'categories' => Category::query()
@@ -51,7 +44,6 @@ class NeedsController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'items' => $items,
-            'archivedItems' => $archivedItems,
             'sort' => $sort,
             'direction' => $direction->value,
             'showArchived' => $showArchived,

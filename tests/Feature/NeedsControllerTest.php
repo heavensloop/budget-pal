@@ -330,20 +330,18 @@ class NeedsControllerTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('needs.index'));
 
-        $response->assertInertia(fn ($page) => $page
-            ->has('items', 0)
-            ->where('archivedItems', []),
-        );
+        $response->assertInertia(fn ($page) => $page->has('items', 0));
     }
 
-    public function test_show_archived_returns_archived_items_in_a_separate_list()
+    public function test_show_archived_includes_archived_items_in_the_same_list()
     {
         $user = User::factory()->create();
         $category = Category::factory()->create();
 
-        NeedsItem::factory()->times(4)->create([
+        NeedsItem::factory()->create([
             'user_id' => $user->id,
             'category_id' => $category->id,
+            'name' => 'Active need',
             'status' => NeedsItemStatus::Pending,
         ]);
         NeedsItem::factory()->create([
@@ -355,12 +353,31 @@ class NeedsControllerTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('needs.index', ['show_archived' => 1]));
 
+        // Sorted by name ascending: "Active need" before "Archived need".
         $response->assertInertia(fn ($page) => $page
-            ->has('items', 4)
-            ->has('archivedItems', 1)
-            ->where('archivedItems.0.name', 'Archived need')
+            ->has('items', 2)
+            ->where('items.0.name', 'Active need')
+            ->where('items.0.status', 'pending')
+            ->where('items.1.name', 'Archived need')
+            ->where('items.1.status', 'archived')
             ->where('showArchived', true),
         );
+    }
+
+    public function test_restoring_an_item_sets_it_back_to_pending()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $item = NeedsItem::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'status' => NeedsItemStatus::Archived,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('needs.status', $item), ['status' => 'pending']);
+
+        $response->assertRedirect();
+        $this->assertSame(NeedsItemStatus::Pending, $item->fresh()->status);
     }
 
     public function test_index_includes_the_next_payment_date_for_a_recurring_item()
