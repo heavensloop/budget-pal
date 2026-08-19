@@ -14,7 +14,7 @@ class CreateUserCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): void
     {
         $user = User::factory()->create([
             'email' => $this->getEmail(),
@@ -28,6 +28,7 @@ class CreateUserCommand extends Command
         if ($this->argument('email')) {
             return $this->argument('email');
         }
+
         return $this->ask('Enter email');
     }
 
@@ -36,6 +37,7 @@ class CreateUserCommand extends Command
         if ($this->argument('password')) {
             return $this->argument('password');
         }
+
         return $this->secret('Enter password');
     }
 
