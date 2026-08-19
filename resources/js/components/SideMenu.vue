@@ -14,6 +14,7 @@ import {
 import BrandMark from '@/components/BrandMark.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
+import { index as debtsIndex } from '@/routes/debts';
 import { index as needsIndex } from '@/routes/needs';
 import { edit as editProfile } from '@/routes/profile';
 import type { NavItem } from '@/types';
@@ -31,11 +32,11 @@ type SoonItem = { title: string; icon: NavItem['icon'] };
 const planningItems: NavItem[] = [
     { title: 'Dashboard', href: dashboard(), icon: CircleGauge },
     { title: 'Needs', href: needsIndex(), icon: ListChecks },
+    { title: 'Debts', href: debtsIndex(), icon: CreditCard },
 ];
 
 const planningSoon: SoonItem[] = [
     { title: 'Wants', icon: ShoppingBag },
-    { title: 'Debts', icon: CreditCard },
     { title: 'Savings & Investments', icon: PiggyBank },
 ];
 
