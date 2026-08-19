@@ -40,5 +40,11 @@ types-check:
 test-js:
     pnpm run test
 
+# Format PHP and frontend code (Pint + Prettier)
+format-code: pint format
+
+# Run static analysis and lint fixes (PHPStan + ESLint)
+lint-code: stan lint
+
 # Run the full verification suite (PHP + frontend)
 check: pint-check stan test format-check lint-check types-check test-js
