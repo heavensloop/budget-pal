@@ -3,7 +3,6 @@
 namespace App\Actions\Budget;
 
 use App\Enums\NeedsItemStatus;
-use App\Enums\RecurrenceFrequency;
 use App\Models\NeedsItem;
 use App\Models\Schedule;
 use App\Models\User;
@@ -17,11 +16,13 @@ class CreateNeedsItem
     {
         $schedule = null;
 
-        if (! empty($data['is_recurring'])) {
+        if (! empty($data['schedule'])) {
             $schedule = Schedule::create([
                 'is_active' => true,
-                'recurrence' => RecurrenceFrequency::Monthly,
-                'due_day' => $data['due_day'] ?? null,
+                'recurrence' => $data['schedule']['recurrence'] ?? null,
+                'start_date' => $data['schedule']['start_date'],
+                'end_date' => $data['schedule']['end_date'] ?? null,
+                'reminder_days_before' => $data['schedule']['reminder_days_before'] ?? null,
             ]);
         }
 
@@ -33,7 +34,6 @@ class CreateNeedsItem
             'amount' => $data['amount'],
             'currency_code' => 'NGN',
             'status' => NeedsItemStatus::Pending,
-            'date_due' => $schedule ? null : ($data['date_due'] ?? null),
             'notes' => $data['notes'] ?? null,
         ]);
     }

@@ -28,7 +28,6 @@ class NeedsItemFactory extends Factory
             'amount' => fake()->randomFloat(2, 1000, 100000),
             'currency_code' => 'NGN',
             'status' => NeedsItemStatus::Pending,
-            'date_due' => null,
             'notes' => null,
         ];
     }

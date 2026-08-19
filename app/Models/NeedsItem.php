@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\NeedsItemStatus;
+use App\Enums\RecurrenceFrequency;
 use App\Enums\SortDirection;
 use Carbon\CarbonImmutable;
 use Database\Factories\NeedsItemFactory;
@@ -23,7 +24,6 @@ use Illuminate\Support\Carbon;
  * @property string $amount
  * @property string $currency_code
  * @property NeedsItemStatus $status
- * @property CarbonImmutable|null $date_due
  * @property string|null $notes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -36,7 +36,6 @@ use Illuminate\Support\Carbon;
     'amount',
     'currency_code',
     'status',
-    'date_due',
     'notes',
 ])]
 class NeedsItem extends Model
@@ -74,36 +73,86 @@ class NeedsItem extends Model
     }
 
     /**
-     * The next upcoming occurrence of this item's due date, from today.
-     * Recurring items roll forward into next month once this month's
-     * due day has passed; one-time items with a past date_due (or no
-     * date_due at all) are considered unscheduled.
+     * The next upcoming occurrence of this item's schedule, from today.
+     * A one-time schedule (recurrence null) is its own due date, and is
+     * considered unscheduled once it's passed. Recurring schedules roll
+     * forward to the next occurrence on/after today, never before their
+     * own start_date, and return null once past their end_date.
      */
     public function nextPaymentDate(?CarbonImmutable $today = null): ?CarbonImmutable
     {
         $today ??= CarbonImmutable::today();
+        $schedule = $this->schedule;
 
-        if ($this->schedule?->is_active && $this->schedule->due_day) {
-            $dueDay = $this->schedule->due_day;
-
-            $thisMonth = CarbonImmutable::create($today->year, $today->month, 1)
-                ->day(min($dueDay, $today->daysInMonth));
-
-            if (! $thisMonth->lt($today)) {
-                return $thisMonth;
-            }
-
-            $nextMonth = $today->addMonthNoOverflow();
-
-            return CarbonImmutable::create($nextMonth->year, $nextMonth->month, 1)
-                ->day(min($dueDay, $nextMonth->daysInMonth));
+        if (! $schedule?->is_active || ! $schedule->start_date) {
+            return null;
         }
 
-        if ($this->date_due && ! $this->date_due->lt($today)) {
-            return $this->date_due;
+        if ($schedule->recurrence === null) {
+            return $schedule->start_date->lt($today) ? null : $schedule->start_date;
         }
 
-        return null;
+        $dueDate = match ($schedule->recurrence) {
+            RecurrenceFrequency::Monthly => $this->nextMonthlyOccurrence($schedule->start_date, $today),
+            RecurrenceFrequency::Yearly => $this->nextYearlyOccurrence($schedule->start_date, $today),
+            RecurrenceFrequency::Weekly => $this->nextIntervalOccurrence($schedule->start_date, $today, 7),
+            RecurrenceFrequency::Biweekly => $this->nextIntervalOccurrence($schedule->start_date, $today, 14),
+        };
+
+        if ($schedule->end_date && $dueDate->gt($schedule->end_date)) {
+            return null;
+        }
+
+        return $dueDate;
+    }
+
+    private function nextMonthlyOccurrence(CarbonImmutable $startDate, CarbonImmutable $today): CarbonImmutable
+    {
+        if ($startDate->gt($today)) {
+            return $startDate;
+        }
+
+        $day = $startDate->day;
+        $thisMonth = CarbonImmutable::create($today->year, $today->month, 1)->day(min($day, $today->daysInMonth));
+
+        if (! $thisMonth->lt($today)) {
+            return $thisMonth;
+        }
+
+        $nextMonth = $today->addMonthNoOverflow();
+
+        return CarbonImmutable::create($nextMonth->year, $nextMonth->month, 1)->day(min($day, $nextMonth->daysInMonth));
+    }
+
+    private function nextYearlyOccurrence(CarbonImmutable $startDate, CarbonImmutable $today): CarbonImmutable
+    {
+        if ($startDate->gt($today)) {
+            return $startDate;
+        }
+
+        $thisYearDays = CarbonImmutable::create($today->year, $startDate->month, 1)->daysInMonth;
+        $thisYear = CarbonImmutable::create($today->year, $startDate->month, 1)->day(min($startDate->day, $thisYearDays));
+
+        if (! $thisYear->lt($today)) {
+            return $thisYear;
+        }
+
+        $nextYear = $today->year + 1;
+        $nextYearDays = CarbonImmutable::create($nextYear, $startDate->month, 1)->daysInMonth;
+
+        return CarbonImmutable::create($nextYear, $startDate->month, 1)->day(min($startDate->day, $nextYearDays));
+    }
+
+    private function nextIntervalOccurrence(CarbonImmutable $startDate, CarbonImmutable $today, int $intervalDays): CarbonImmutable
+    {
+        if ($startDate->gt($today)) {
+            return $startDate;
+        }
+
+        $intervalsElapsed = intdiv((int) $startDate->diffInDays($today), $intervalDays);
+        $candidate = $startDate->addDays($intervalsElapsed * $intervalDays);
+
+        return $candidate->lt($today) ? $candidate->addDays($intervalDays) : $candidate;
     }
 
     /**
@@ -138,7 +187,6 @@ class NeedsItem extends Model
         return [
             'amount' => 'decimal:2',
             'status' => NeedsItemStatus::class,
-            'date_due' => 'date',
         ];
     }
 }

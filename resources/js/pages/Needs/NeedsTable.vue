@@ -9,6 +9,7 @@ import {
     Trash2,
 } from '@lucide/vue';
 import { reactive } from 'vue';
+import type { ScheduleValue } from '@/components/ScheduleField.vue';
 import { useCurrency } from '@/composables/useCurrency';
 
 export type NeedItem = {
@@ -19,9 +20,7 @@ export type NeedItem = {
     amount: number;
     currencyCode: string;
     status: 'pending' | 'done' | 'skipped' | 'archived';
-    isRecurring: boolean;
-    dueDay: number | null;
-    dateDue: string | null;
+    schedule: ScheduleValue;
     nextPaymentDate: string | null;
     notes: string | null;
 };

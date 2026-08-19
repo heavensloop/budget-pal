@@ -97,9 +97,7 @@ class NeedsController extends Controller
             'amount' => (float) $item->amount,
             'currencyCode' => $item->currency_code,
             'status' => $item->status->value,
-            'isRecurring' => (bool) $item->schedule_id,
-            'dueDay' => $item->schedule?->due_day,
-            'dateDue' => $item->date_due?->toDateString(),
+            'schedule' => $item->schedule?->toFrontendArray(),
             'nextPaymentDate' => $item->nextPaymentDate()?->toDateString(),
             'notes' => $item->notes,
         ];

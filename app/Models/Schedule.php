@@ -17,12 +17,11 @@ use Illuminate\Support\Carbon;
  * @property RecurrenceFrequency|null $recurrence
  * @property CarbonImmutable|null $start_date
  * @property CarbonImmutable|null $end_date
- * @property int|null $due_day
  * @property int|null $reminder_days_before
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['is_active', 'recurrence', 'start_date', 'end_date', 'due_day', 'reminder_days_before'])]
+#[Fillable(['is_active', 'recurrence', 'start_date', 'end_date', 'reminder_days_before'])]
 class Schedule extends Model
 {
     /** @use HasFactory<ScheduleFactory> */
@@ -37,6 +36,19 @@ class Schedule extends Model
     }
 
     /**
+     * @return array{recurrence: string|null, startDate: string|null, endDate: string|null, reminderDaysBefore: int|null}
+     */
+    public function toFrontendArray(): array
+    {
+        return [
+            'recurrence' => $this->recurrence?->value,
+            'startDate' => $this->start_date?->toDateString(),
+            'endDate' => $this->end_date?->toDateString(),
+            'reminderDaysBefore' => $this->reminder_days_before,
+        ];
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -48,7 +60,6 @@ class Schedule extends Model
             'recurrence' => RecurrenceFrequency::class,
             'start_date' => 'date',
             'end_date' => 'date',
-            'due_day' => 'integer',
             'reminder_days_before' => 'integer',
         ];
     }

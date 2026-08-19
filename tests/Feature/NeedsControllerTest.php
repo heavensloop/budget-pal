@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\NeedsItemStatus;
+use App\Enums\RecurrenceFrequency;
 use App\Models\Category;
 use App\Models\NeedsItem;
 use App\Models\Schedule;
@@ -57,19 +58,18 @@ class NeedsControllerTest extends TestCase
             'category_id' => $category->id,
             'name' => 'Birthday gift',
             'amount' => 25000,
-            'date_due' => '2026-09-15',
+            'schedule' => ['start_date' => '2026-09-15'],
         ]);
 
         $response->assertSessionHasNoErrors();
         $response->assertRedirect();
 
-        $this->assertDatabaseHas('needs_items', [
-            'user_id' => $user->id,
-            'name' => 'Birthday gift',
-            'amount' => '25000.00',
-            'schedule_id' => null,
-            'date_due' => '2026-09-15',
-        ]);
+        $item = NeedsItem::where('name', 'Birthday gift')->firstOrFail();
+
+        $this->assertSame('25000.00', $item->amount);
+        $this->assertNotNull($item->schedule_id);
+        $this->assertNull($item->schedule->recurrence);
+        $this->assertSame('2026-09-15', $item->schedule->start_date->toDateString());
     }
 
     public function test_store_creates_a_recurring_item_with_a_schedule()
@@ -81,16 +81,36 @@ class NeedsControllerTest extends TestCase
             'category_id' => $category->id,
             'name' => 'Rent',
             'amount' => 60000,
-            'is_recurring' => true,
-            'due_day' => 1,
+            'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-01'],
         ]);
 
         $item = NeedsItem::where('name', 'Rent')->firstOrFail();
 
         $this->assertNotNull($item->schedule_id);
         $this->assertTrue($item->schedule->is_active);
-        $this->assertSame(1, $item->schedule->due_day);
-        $this->assertNull($item->date_due);
+        $this->assertSame(RecurrenceFrequency::Monthly, $item->schedule->recurrence);
+        $this->assertSame('2026-03-01', $item->schedule->start_date->toDateString());
+    }
+
+    public function test_store_sets_the_reminder_days_before()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $this->actingAs($user)->post(route('needs.store'), [
+            'category_id' => $category->id,
+            'name' => 'Rent',
+            'amount' => 60000,
+            'schedule' => [
+                'recurrence' => 'monthly',
+                'start_date' => '2026-03-01',
+                'reminder_days_before' => 3,
+            ],
+        ]);
+
+        $item = NeedsItem::where('name', 'Rent')->firstOrFail();
+
+        $this->assertSame(3, $item->schedule->reminder_days_before);
     }
 
     public function test_store_validates_amount_is_numeric_and_non_negative()
@@ -205,23 +225,21 @@ class NeedsControllerTest extends TestCase
             'category_id' => $category->id,
             'name' => $item->name,
             'amount' => 75000,
-            'is_recurring' => true,
-            'due_day' => 1,
+            'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-01'],
         ]);
 
         $this->assertSame('75000.00', $item->fresh()->amount);
     }
 
-    public function test_update_sets_a_recurring_due_day_sent_as_a_string_by_the_form()
+    public function test_update_sets_a_recurring_schedule_sent_as_strings_by_the_form()
     {
         $user = User::factory()->create();
         $category = Category::factory()->create();
-        $schedule = Schedule::factory()->create(['is_active' => true, 'due_day' => null]);
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => null, 'start_date' => '2026-01-01']);
         $item = NeedsItem::factory()->create([
             'user_id' => $user->id,
             'category_id' => $category->id,
             'schedule_id' => $schedule->id,
-            'date_due' => null,
         ]);
 
         // Real form submissions arrive as strings, unlike PHP-array test payloads.
@@ -229,15 +247,15 @@ class NeedsControllerTest extends TestCase
             'category_id' => (string) $category->id,
             'name' => $item->name,
             'amount' => (string) $item->amount,
-            'is_recurring' => '1',
-            'due_day' => '15',
+            'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-15'],
         ]);
 
         $response->assertRedirect();
-        $this->assertSame(15, $schedule->fresh()->due_day);
+        $this->assertSame(RecurrenceFrequency::Monthly, $schedule->fresh()->recurrence);
+        $this->assertSame('2026-03-15', $schedule->fresh()->start_date->toDateString());
     }
 
-    public function test_update_turning_off_recurring_deactivates_the_schedule()
+    public function test_update_without_a_schedule_removes_the_items_existing_schedule()
     {
         $user = User::factory()->create();
         $category = Category::factory()->create();
@@ -254,7 +272,8 @@ class NeedsControllerTest extends TestCase
             'amount' => $item->amount,
         ]);
 
-        $this->assertFalse($schedule->fresh()->is_active);
+        $this->assertNull($item->fresh()->schedule_id);
+        $this->assertDatabaseMissing('schedules', ['id' => $schedule->id]);
     }
 
     public function test_a_user_cannot_update_another_users_item()
@@ -384,7 +403,7 @@ class NeedsControllerTest extends TestCase
     {
         $user = User::factory()->create();
         $category = Category::factory()->create();
-        $schedule = Schedule::factory()->create(['is_active' => true, 'due_day' => 15]);
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => RecurrenceFrequency::Monthly, 'start_date' => '2026-01-15']);
         NeedsItem::factory()->create([
             'user_id' => $user->id,
             'category_id' => $category->id,
@@ -403,7 +422,7 @@ class NeedsControllerTest extends TestCase
         NeedsItem::factory()->create([
             'user_id' => $user->id,
             'category_id' => $category->id,
-            'date_due' => null,
+            'schedule_id' => null,
         ]);
 
         $response = $this->actingAs($user)->get(route('needs.index'));

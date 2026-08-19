@@ -3,15 +3,16 @@ import { Form, Head, router, usePage } from '@inertiajs/vue3';
 import { Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
+import ScheduleField from '@/components/ScheduleField.vue';
+import type { ScheduleValue } from '@/components/ScheduleField.vue';
 import SearchableComboBox from '@/components/SearchableComboBox.vue';
 import type { SearchableComboBoxOption } from '@/components/SearchableComboBox.vue';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
-    DialogContent,
     DialogFooter,
     DialogHeader,
+    DialogScrollContent,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -61,7 +62,7 @@ function toggleShowArchived() {
 
 const dialogOpen = ref(false);
 const editingItem = ref<NeedItem | null>(null);
-const isRecurring = ref(false);
+const schedule = ref<ScheduleValue>(null);
 const selectedCategory = ref<SearchableComboBoxOption | null>(null);
 
 const categoryOptions = computed(() =>
@@ -73,14 +74,14 @@ const categoryOptions = computed(() =>
 
 function openCreateDialog() {
     editingItem.value = null;
-    isRecurring.value = false;
+    schedule.value = null;
     selectedCategory.value = null;
     dialogOpen.value = true;
 }
 
 function openEditDialog(item: NeedItem) {
     editingItem.value = item;
-    isRecurring.value = item.isRecurring;
+    schedule.value = item.schedule;
     selectedCategory.value =
         categoryOptions.value.find(
             (option) => option.value === item.categoryId,
@@ -153,7 +154,7 @@ function destroy(item: NeedItem) {
     </div>
 
     <Dialog v-model:open="dialogOpen">
-        <DialogContent>
+        <DialogScrollContent>
             <Form
                 :key="editingItem?.id ?? 'create'"
                 v-bind="formAction"
@@ -210,34 +211,12 @@ function destroy(item: NeedItem) {
                     </p>
                 </div>
 
-                <label class="flex items-center gap-2 text-sm">
-                    <Checkbox
-                        v-model="isRecurring"
-                        name="is_recurring"
-                        value="1"
-                    />
-                    Recurring every month
-                </label>
-
-                <div v-if="isRecurring" class="grid gap-2">
-                    <Label for="due_day">Due day of month</Label>
-                    <Input
-                        id="due_day"
-                        name="due_day"
-                        type="number"
-                        min="1"
-                        max="31"
-                        :default-value="editingItem?.dueDay ?? undefined"
-                    />
-                </div>
-
-                <div v-else class="grid gap-2">
-                    <Label for="date_due">Due date</Label>
-                    <Input
-                        id="date_due"
-                        name="date_due"
-                        type="date"
-                        :default-value="editingItem?.dateDue ?? undefined"
+                <div class="grid gap-2">
+                    <Label>Schedule</Label>
+                    <ScheduleField
+                        v-model="schedule"
+                        name="schedule"
+                        :errors="errors"
                     />
                 </div>
 
@@ -257,6 +236,6 @@ function destroy(item: NeedItem) {
                     }}</Button>
                 </DialogFooter>
             </Form>
-        </DialogContent>
+        </DialogScrollContent>
     </Dialog>
 </template>
