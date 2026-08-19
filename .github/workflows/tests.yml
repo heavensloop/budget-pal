@@ -54,6 +54,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Validate composer.json and composer.lock
+        run: composer validate --no-check-publish
+
       - name: Create testing database
         run: PGPASSWORD=password psql -h 127.0.0.1 -U sail -d laravel -c "CREATE DATABASE testing;"
 
