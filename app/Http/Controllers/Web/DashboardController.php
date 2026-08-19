@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Actions\Budget\GenerateNextBudgetMonth;
-use App\Enums\ItemStatus;
 use App\Http\Controllers\Controller;
+use App\Models\BudgetMonth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -12,44 +11,40 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly GenerateNextBudgetMonth $generateNextBudgetMonth) {}
-
     public function __invoke(Request $request): Response
     {
         $year = $request->integer('year', now()->year);
         $month = $request->integer('month', now()->month);
 
-        $budgetMonth = ($this->generateNextBudgetMonth)($request->user(), $year, $month);
+        $currentMonth = [
+            'year' => $year,
+            'month' => $month,
+            'label' => Carbon::createFromDate($year, $month, 1)->format('F Y'),
+        ];
 
-        $needsItems = $budgetMonth->needsItems()->with('category')->latest()->get();
+        $budgetMonth = BudgetMonth::query()
+            ->where('user_id', $request->user()->id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->first();
 
-        $needsByCategory = $needsItems
-            ->groupBy(fn ($item) => $item->category->name)
-            ->map(fn ($items, $name) => ['label' => $name, 'amount' => (float) $items->sum('amount')])
-            ->sortByDesc('amount')
-            ->values();
-
-        $recentItems = $needsItems->take(7)->map(fn ($item) => [
-            'name' => $item->name,
-            'category' => $item->category->name,
-            'amount' => (float) $item->amount,
-            'currencyCode' => $item->currency_code,
-            'status' => $item->status->value,
-        ])->values();
+        if (! $budgetMonth) {
+            return Inertia::render('Dashboard', [
+                'currentMonth' => $currentMonth,
+                'hasBudgetMonth' => false,
+            ]);
+        }
 
         return Inertia::render('Dashboard', [
-            'currentMonth' => [
-                'year' => $year,
-                'month' => $month,
-                'label' => Carbon::createFromDate($year, $month, 1)->format('F Y'),
-            ],
+            'currentMonth' => $currentMonth,
+            'hasBudgetMonth' => true,
             'kpis' => [
                 'income' => ['amount' => 0, 'currencyCode' => 'NGN'],
                 'needs' => [
-                    'amount' => (float) $needsItems->sum('amount'),
+                    'amount' => 0,
                     'currencyCode' => 'NGN',
-                    'paidCount' => $needsItems->where('status', ItemStatus::Done)->count(),
-                    'totalCount' => $needsItems->count(),
+                    'paidCount' => 0,
+                    'totalCount' => 0,
                 ],
                 'wants' => [
                     'spent' => 0,
@@ -58,8 +53,8 @@ class DashboardController extends Controller
                 ],
                 'savings' => ['amount' => 0, 'currencyCode' => 'NGN', 'delta' => 0],
             ],
-            'needsByCategory' => $needsByCategory,
-            'recentItems' => $recentItems,
+            'needsByCategory' => [],
+            'recentItems' => [],
             'reminders' => [],
         ]);
     }

@@ -27,21 +27,10 @@ class ShowNeedsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
-            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'sort' => ['nullable', 'string'],
             'direction' => ['nullable', 'string'],
+            'show_archived' => ['sometimes', 'boolean'],
         ];
-    }
-
-    public function getYear(): int
-    {
-        return $this->integer('year', now()->year);
-    }
-
-    public function getMonth(): int
-    {
-        return $this->integer('month', now()->month);
     }
 
     /**

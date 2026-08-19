@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from '@lucide/vue';
+import { Archive, ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
 import SearchableComboBox from '@/components/SearchableComboBox.vue';
 import type { SearchableComboBoxOption } from '@/components/SearchableComboBox.vue';
-import StatusBadge from '@/components/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -19,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCurrency } from '@/composables/useCurrency';
-import type { CurrentMonth } from '@/composables/useMonthSelector';
 
 type Category = { id: number; name: string };
 
@@ -30,21 +28,23 @@ type NeedItem = {
     name: string;
     amount: number;
     currencyCode: string;
-    status: 'pending' | 'done' | 'skipped';
+    status: 'pending' | 'done' | 'skipped' | 'archived';
     isRecurring: boolean;
     dueDay: number | null;
     dateDue: string | null;
+    nextPaymentDate: string | null;
     notes: string | null;
 };
 
-type SortColumn = 'name' | 'category' | 'amount' | 'status';
+type SortColumn = 'name' | 'category' | 'amount';
 
 const page = usePage<{
-    currentMonth: CurrentMonth;
     categories: Category[];
     items: NeedItem[];
+    archivedItems: NeedItem[];
     sort: SortColumn;
     direction: 'asc' | 'desc';
+    showArchived: boolean;
 }>();
 
 const { formatCurrency } = useCurrency();
@@ -53,8 +53,15 @@ const sortableColumns: { key: SortColumn; label: string }[] = [
     { key: 'name', label: 'Item' },
     { key: 'category', label: 'Category' },
     { key: 'amount', label: 'Amount' },
-    { key: 'status', label: 'Status' },
 ];
+
+function formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
 
 function sortBy(column: SortColumn) {
     const direction =
@@ -65,10 +72,21 @@ function sortBy(column: SortColumn) {
     router.get(
         window.location.pathname,
         {
-            year: page.props.currentMonth.year,
-            month: page.props.currentMonth.month,
             sort: column,
             direction,
+            show_archived: page.props.showArchived ? 1 : 0,
+        },
+        { preserveState: true, preserveScroll: true },
+    );
+}
+
+function toggleShowArchived() {
+    router.get(
+        window.location.pathname,
+        {
+            sort: page.props.sort,
+            direction: page.props.direction,
+            show_archived: page.props.showArchived ? 0 : 1,
         },
         { preserveState: true, preserveScroll: true },
     );
@@ -106,24 +124,13 @@ function openEditDialog(item: NeedItem) {
 const formAction = computed(() =>
     editingItem.value
         ? NeedsController.update.form(editingItem.value.id)
-        : NeedsController.store.form({
-              query: {
-                  year: page.props.currentMonth.year,
-                  month: page.props.currentMonth.month,
-              },
-          }),
+        : NeedsController.store.form(),
 );
 
-const statusCycle = {
-    pending: 'done',
-    done: 'skipped',
-    skipped: 'pending',
-} as const;
-
-function cycleStatus(item: NeedItem) {
+function archiveItem(item: NeedItem) {
     router.patch(
         NeedsController.updateStatus(item.id).url,
-        { status: statusCycle[item.status] },
+        { status: 'archived' },
         { preserveScroll: true },
     );
 }
@@ -143,14 +150,18 @@ function destroy(item: NeedItem) {
     <Head title="Needs" />
 
     <div class="mt-8 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-medium">Needs</h1>
-            <p class="mt-1 opacity-70">{{ page.props.currentMonth.label }}</p>
+        <h1 class="text-2xl font-medium">Needs</h1>
+        <div class="flex items-center gap-2">
+            <Button variant="outline" @click="toggleShowArchived">
+                {{
+                    page.props.showArchived ? 'Hide Archived' : 'Show Archived'
+                }}
+            </Button>
+            <Button @click="openCreateDialog">
+                <Plus class="size-4" />
+                Add Need
+            </Button>
         </div>
-        <Button @click="openCreateDialog">
-            <Plus class="size-4" />
-            Add Need
-        </Button>
     </div>
 
     <div class="mt-6 mb-10">
@@ -192,6 +203,7 @@ function destroy(item: NeedItem) {
                                 />
                             </button>
                         </th>
+                        <th class="p-3 font-medium">Next payment date</th>
                         <th class="p-3 font-medium"></th>
                     </tr>
                 </thead>
@@ -207,13 +219,81 @@ function destroy(item: NeedItem) {
                             {{ formatCurrency(item.amount, item.currencyCode) }}
                         </td>
                         <td class="p-3">
-                            <button
-                                type="button"
-                                @click="cycleStatus(item)"
-                                title="Click to change status"
-                            >
-                                <StatusBadge :status="item.status" />
-                            </button>
+                            <span v-if="item.nextPaymentDate" class="text-sm">
+                                {{ formatDate(item.nextPaymentDate) }}
+                            </span>
+                            <span v-else class="text-sm opacity-50">
+                                Not scheduled
+                            </span>
+                        </td>
+                        <td class="p-3">
+                            <div class="flex justify-end gap-1">
+                                <button
+                                    type="button"
+                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    @click="openEditDialog(item)"
+                                >
+                                    <Pencil class="size-4 opacity-60" />
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    title="Archive"
+                                    @click="archiveItem(item)"
+                                >
+                                    <Archive class="size-4 opacity-60" />
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
+                                    @click="destroy(item)"
+                                >
+                                    <Trash2 class="size-4 text-danger" />
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-else class="box py-12 text-center text-sm opacity-50">
+            No needs yet
+        </div>
+    </div>
+
+    <div v-if="page.props.showArchived" class="mb-10">
+        <h2 class="mb-3 text-lg font-medium opacity-70">Archived</h2>
+        <div
+            v-if="page.props.archivedItems.length"
+            class="box overflow-x-auto p-2"
+        >
+            <table class="w-full text-left">
+                <thead>
+                    <tr
+                        class="border-b border-foreground/10 text-xs uppercase opacity-60"
+                    >
+                        <th class="p-3 font-medium">Item</th>
+                        <th class="p-3 font-medium">Category</th>
+                        <th class="p-3 font-medium">Amount</th>
+                        <th class="p-3 font-medium">Next payment date</th>
+                        <th class="p-3 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr
+                        v-for="item in page.props.archivedItems"
+                        :key="item.id"
+                        class="border-b border-foreground/5 last:border-0"
+                    >
+                        <td class="p-3">{{ item.name }}</td>
+                        <td class="p-3 opacity-70">{{ item.category }}</td>
+                        <td class="p-3">
+                            {{ formatCurrency(item.amount, item.currencyCode) }}
+                        </td>
+                        <td class="p-3">
+                            <span class="text-xs font-medium opacity-60">
+                                Archived
+                            </span>
                         </td>
                         <td class="p-3">
                             <div class="flex justify-end gap-1">
@@ -238,7 +318,7 @@ function destroy(item: NeedItem) {
             </table>
         </div>
         <div v-else class="box py-12 text-center text-sm opacity-50">
-            No needs yet this month
+            No archived needs
         </div>
     </div>
 

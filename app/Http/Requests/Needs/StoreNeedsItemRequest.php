@@ -4,6 +4,7 @@ namespace App\Http\Requests\Needs;
 
 use App\Models\NeedsItem;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreNeedsItemRequest extends FormRequest
 {
@@ -22,7 +23,7 @@ class StoreNeedsItemRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0'],
@@ -31,5 +32,12 @@ class StoreNeedsItemRequest extends FormRequest
             'due_day' => ['nullable', 'integer', 'between:1,31'],
             'date_due' => ['nullable', 'date'],
         ];
+
+        if (! $this->boolean('is_recurring')) {
+            $rules['name'][] = Rule::unique('needs_items')
+                ->where(fn ($query) => $query->where('user_id', $this->user()->id)->whereNull('schedule_id'));
+        }
+
+        return $rules;
     }
 }

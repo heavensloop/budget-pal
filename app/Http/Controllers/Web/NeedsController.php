@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Web;
 
 use App\Actions\Budget\CreateNeedsItem;
-use App\Actions\Budget\GenerateNextBudgetMonth;
 use App\Actions\Budget\MarkItemStatus;
 use App\Actions\Budget\UpdateNeedsItem;
 use App\Enums\CategoryType;
-use App\Enums\ItemStatus;
+use App\Enums\NeedsItemStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Needs\ShowNeedsRequest;
 use App\Http\Requests\Needs\StoreNeedsItemRequest;
@@ -16,65 +15,52 @@ use App\Models\Category;
 use App\Models\NeedsItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class NeedsController extends Controller
 {
-    public function __construct(private readonly GenerateNextBudgetMonth $generateNextBudgetMonth) {}
-
     public function index(ShowNeedsRequest $request): Response
     {
-        $year = $request->getYear();
-        $month = $request->getMonth();
-        $budgetMonth = ($this->generateNextBudgetMonth)($request->user(), $year, $month);
         $sort = $request->getSortField('name');
         $direction = $request->getSortDirection();
+        $showArchived = $request->boolean('show_archived');
 
-        $items = $budgetMonth->needsItems()
+        $query = NeedsItem::query()
+            ->where('user_id', $request->user()->id)
             ->with(['category', 'schedule'])
-            ->sortable($sort, $direction)
+            ->sortable($sort, $direction);
+
+        $items = (clone $query)
+            ->where('status', '!=', NeedsItemStatus::Archived)
             ->get()
-            ->map(fn (NeedsItem $item) => [
-                'id' => $item->id,
-                'categoryId' => $item->category_id,
-                'category' => $item->category->name,
-                'name' => $item->name,
-                'amount' => (float) $item->amount,
-                'currencyCode' => $item->currency_code,
-                'status' => $item->status->value,
-                'isRecurring' => (bool) $item->schedule_id,
-                'dueDay' => $item->schedule?->due_day,
-                'dateDue' => $item->date_due?->toDateString(),
-                'notes' => $item->notes,
-            ]);
+            ->map($this->mapItem(...));
+
+        $archivedItems = match($showArchived) {
+            true => (clone $query)
+                ->where('status', NeedsItemStatus::Archived)
+                ->get()
+                ->map($this->mapItem(...)),
+            false => collect(),
+        };
 
         return Inertia::render('Needs/Index', [
-            'currentMonth' => [
-                'year' => $year,
-                'month' => $month,
-                'label' => Carbon::createFromDate($year, $month, 1)->format('F Y'),
-            ],
             'categories' => Category::query()
                 ->whereIn('type', [CategoryType::Need, CategoryType::Both])
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'items' => $items,
+            'archivedItems' => $archivedItems,
             'sort' => $sort,
             'direction' => $direction->value,
+            'showArchived' => $showArchived,
         ]);
     }
 
     public function store(StoreNeedsItemRequest $request, CreateNeedsItem $createNeedsItem): RedirectResponse
     {
-        $year = $request->integer('year', now()->year);
-        $month = $request->integer('month', now()->month);
-
-        $budgetMonth = ($this->generateNextBudgetMonth)($request->user(), $year, $month);
-
-        $createNeedsItem($budgetMonth, $request->user(), $request->validated());
+        $createNeedsItem($request->user(), $request->validated());
 
         return back();
     }
@@ -90,7 +76,6 @@ class NeedsController extends Controller
     {
         Gate::authorize('delete', $need);
 
-        $need->budgetItem?->delete();
         $need->delete();
 
         return back();
@@ -100,10 +85,31 @@ class NeedsController extends Controller
     {
         Gate::authorize('update', $need);
 
-        $status = ItemStatus::from($request->string('status')->toString());
+        $status = NeedsItemStatus::from($request->string('status')->toString());
 
         $markItemStatus($need, $status);
 
         return back();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapItem(NeedsItem $item): array
+    {
+        return [
+            'id' => $item->id,
+            'categoryId' => $item->category_id,
+            'category' => $item->category->name,
+            'name' => $item->name,
+            'amount' => (float) $item->amount,
+            'currencyCode' => $item->currency_code,
+            'status' => $item->status->value,
+            'isRecurring' => (bool) $item->schedule_id,
+            'dueDay' => $item->schedule?->due_day,
+            'dateDue' => $item->date_due?->toDateString(),
+            'nextPaymentDate' => $item->nextPaymentDate()?->toDateString(),
+            'notes' => $item->notes,
+        ];
     }
 }

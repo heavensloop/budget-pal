@@ -8,15 +8,7 @@ use App\Models\Schedule;
 
 class UpdateNeedsItem
 {
-    public function __construct(private readonly SyncBudgetItem $syncBudgetItem) {}
-
     /**
-     * Updates only the given month's row - editing an item never touches
-     * past or future months. The one exception is the shared Schedule
-     * (due_day / is_active), which is intentionally canonical across every
-     * month carrying the same schedule_id, since it's what
-     * GenerateNextBudgetMonth reads to decide what to carry forward next.
-     *
      * @param  array<string, mixed>  $data  validated UpdateNeedsItemRequest input
      */
     public function __invoke(NeedsItem $item, array $data): NeedsItem
@@ -44,8 +36,6 @@ class UpdateNeedsItem
             'date_due' => $isRecurring ? null : ($data['date_due'] ?? null),
             'notes' => $data['notes'] ?? null,
         ]);
-
-        ($this->syncBudgetItem)($item);
 
         return $item;
     }

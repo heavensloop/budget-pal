@@ -2,8 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\ItemStatus;
-use App\Models\BudgetMonth;
+use App\Enums\NeedsItemStatus;
 use App\Models\Category;
 use App\Models\NeedsItem;
 use App\Models\User;
@@ -22,14 +21,13 @@ class NeedsItemFactory extends Factory
     public function definition(): array
     {
         return [
-            'budget_month_id' => BudgetMonth::factory(),
             'user_id' => User::factory(),
             'category_id' => Category::factory(),
             'schedule_id' => null,
             'name' => fake()->words(2, true),
             'amount' => fake()->randomFloat(2, 1000, 100000),
             'currency_code' => 'NGN',
-            'status' => ItemStatus::Pending,
+            'status' => NeedsItemStatus::Pending,
             'date_due' => null,
             'notes' => null,
         ];
