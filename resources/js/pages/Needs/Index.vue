@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import {
-    Archive,
-    ArchiveRestore,
-    ArrowDown,
-    ArrowUp,
-    Pencil,
-    Plus,
-    Trash2,
-} from '@lucide/vue';
+import { Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
 import SearchableComboBox from '@/components/SearchableComboBox.vue';
@@ -25,26 +17,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useCurrency } from '@/composables/useCurrency';
+import NeedsTable from './NeedsTable.vue';
+import type { NeedItem, SortColumn } from './NeedsTable.vue';
 
 type Category = { id: number; name: string };
-
-type NeedItem = {
-    id: number;
-    categoryId: number;
-    category: string;
-    name: string;
-    amount: number;
-    currencyCode: string;
-    status: 'pending' | 'done' | 'skipped' | 'archived';
-    isRecurring: boolean;
-    dueDay: number | null;
-    dateDue: string | null;
-    nextPaymentDate: string | null;
-    notes: string | null;
-};
-
-type SortColumn = 'name' | 'category' | 'amount';
 
 const page = usePage<{
     categories: Category[];
@@ -53,22 +29,6 @@ const page = usePage<{
     direction: 'asc' | 'desc';
     showArchived: boolean;
 }>();
-
-const { formatCurrency } = useCurrency();
-
-const sortableColumns: { key: SortColumn; label: string }[] = [
-    { key: 'name', label: 'Item' },
-    { key: 'category', label: 'Category' },
-    { key: 'amount', label: 'Amount' },
-];
-
-function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
 
 function sortBy(column: SortColumn) {
     const direction =
@@ -180,118 +140,16 @@ function destroy(item: NeedItem) {
     </div>
 
     <div class="mt-6 mb-10">
-        <div v-if="page.props.items.length" class="box overflow-x-auto p-2">
-            <table class="w-full text-left">
-                <thead>
-                    <tr
-                        class="border-b border-foreground/10 text-xs uppercase opacity-60"
-                    >
-                        <th
-                            v-for="column in sortableColumns"
-                            :key="column.key"
-                            class="p-3 font-medium"
-                        >
-                            <button
-                                type="button"
-                                class="flex items-center gap-1 uppercase hover:opacity-100"
-                                :class="
-                                    page.props.sort === column.key
-                                        ? 'opacity-100'
-                                        : 'opacity-70'
-                                "
-                                @click="sortBy(column.key)"
-                            >
-                                {{ column.label }}
-                                <ArrowUp
-                                    v-if="
-                                        page.props.sort === column.key &&
-                                        page.props.direction === 'asc'
-                                    "
-                                    class="size-3"
-                                />
-                                <ArrowDown
-                                    v-else-if="
-                                        page.props.sort === column.key &&
-                                        page.props.direction === 'desc'
-                                    "
-                                    class="size-3"
-                                />
-                            </button>
-                        </th>
-                        <th class="p-3 font-medium">Next payment date</th>
-                        <th class="p-3 font-medium"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="item in page.props.items"
-                        :key="item.id"
-                        class="border-b border-foreground/5 last:border-0"
-                    >
-                        <td class="p-3">
-                            {{ item.name }}
-                            <span
-                                v-if="item.status === 'archived'"
-                                class="ml-2 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-medium opacity-60"
-                            >
-                                Archived
-                            </span>
-                        </td>
-                        <td class="p-3 opacity-70">{{ item.category }}</td>
-                        <td class="p-3">
-                            {{ formatCurrency(item.amount, item.currencyCode) }}
-                        </td>
-                        <td class="p-3">
-                            <span v-if="item.nextPaymentDate" class="text-sm">
-                                {{ formatDate(item.nextPaymentDate) }}
-                            </span>
-                            <span v-else class="text-sm opacity-50">
-                                Not scheduled
-                            </span>
-                        </td>
-                        <td class="p-3">
-                            <div class="flex justify-end gap-1">
-                                <button
-                                    type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
-                                    @click="openEditDialog(item)"
-                                >
-                                    <Pencil class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    v-if="item.status === 'archived'"
-                                    type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
-                                    title="Restore"
-                                    @click="restoreItem(item)"
-                                >
-                                    <ArchiveRestore class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    v-else
-                                    type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
-                                    title="Archive"
-                                    @click="archiveItem(item)"
-                                >
-                                    <Archive class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    type="button"
-                                    class="rounded-lg p-1.5 hover:bg-foreground/5"
-                                    @click="destroy(item)"
-                                >
-                                    <Trash2 class="size-4 text-danger" />
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div v-else class="box py-12 text-center text-sm opacity-50">
-            No needs yet
-        </div>
+        <NeedsTable
+            :items="page.props.items"
+            :sort="page.props.sort"
+            :direction="page.props.direction"
+            @sort="sortBy"
+            @edit="openEditDialog"
+            @archive="archiveItem"
+            @restore="restoreItem"
+            @destroy="destroy"
+        />
     </div>
 
     <Dialog v-model:open="dialogOpen">

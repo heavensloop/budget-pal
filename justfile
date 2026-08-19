@@ -36,5 +36,9 @@ lint-check:
 types-check:
     pnpm run types:check
 
+# Run frontend component tests with Vitest
+test-js:
+    pnpm run test
+
 # Run the full verification suite (PHP + frontend)
-check: pint-check stan test format-check lint-check types-check
+check: pint-check stan test format-check lint-check types-check test-js
