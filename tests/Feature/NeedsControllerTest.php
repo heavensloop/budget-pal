@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MonthlyRecurrence;
 use App\Enums\NeedsItemStatus;
-use App\Enums\RecurrenceFrequency;
 use App\Models\Category;
 use App\Models\NeedsItem;
 use App\Models\Schedule;
@@ -88,7 +88,7 @@ class NeedsControllerTest extends TestCase
 
         $this->assertNotNull($item->schedule_id);
         $this->assertTrue($item->schedule->is_active);
-        $this->assertSame(RecurrenceFrequency::Monthly, $item->schedule->recurrence);
+        $this->assertSame(MonthlyRecurrence::Monthly, $item->schedule->recurrence);
         $this->assertSame('2026-03-01', $item->schedule->start_date->toDateString());
     }
 
@@ -111,6 +111,80 @@ class NeedsControllerTest extends TestCase
         $item = NeedsItem::where('name', 'Rent')->firstOrFail();
 
         $this->assertSame(3, $item->schedule->reminder_days_before);
+    }
+
+    public function test_store_creates_an_every_n_months_item()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $this->actingAs($user)->post(route('needs.store'), [
+            'category_id' => $category->id,
+            'name' => 'Car insurance',
+            'amount' => 45000,
+            'schedule' => [
+                'recurrence' => 'every_n_months',
+                'start_date' => '2026-03-01',
+                'interval_months' => 3,
+            ],
+        ]);
+
+        $item = NeedsItem::where('name', 'Car insurance')->firstOrFail();
+
+        $this->assertSame(MonthlyRecurrence::EveryNMonths, $item->schedule->recurrence);
+        $this->assertSame(3, $item->schedule->interval_months);
+    }
+
+    public function test_store_requires_interval_months_for_every_n_months_recurrence()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('needs.store'), [
+            'category_id' => $category->id,
+            'name' => 'Car insurance',
+            'amount' => 45000,
+            'schedule' => ['recurrence' => 'every_n_months', 'start_date' => '2026-03-01'],
+        ]);
+
+        $response->assertSessionHasErrors('schedule.interval_months');
+    }
+
+    public function test_store_creates_a_specific_months_item()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $this->actingAs($user)->post(route('needs.store'), [
+            'category_id' => $category->id,
+            'name' => 'School fees',
+            'amount' => 80000,
+            'schedule' => [
+                'recurrence' => 'specific_months',
+                'start_date' => '2026-01-15',
+                'months' => [1, 5, 9],
+            ],
+        ]);
+
+        $item = NeedsItem::where('name', 'School fees')->firstOrFail();
+
+        $this->assertSame(MonthlyRecurrence::SpecificMonths, $item->schedule->recurrence);
+        $this->assertSame([1, 5, 9], $item->schedule->months);
+    }
+
+    public function test_store_requires_months_for_specific_months_recurrence()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('needs.store'), [
+            'category_id' => $category->id,
+            'name' => 'School fees',
+            'amount' => 80000,
+            'schedule' => ['recurrence' => 'specific_months', 'start_date' => '2026-01-15'],
+        ]);
+
+        $response->assertSessionHasErrors('schedule.months');
     }
 
     public function test_store_validates_amount_is_numeric_and_non_negative()
@@ -251,8 +325,35 @@ class NeedsControllerTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $this->assertSame(RecurrenceFrequency::Monthly, $schedule->fresh()->recurrence);
+        $this->assertSame(MonthlyRecurrence::Monthly, $schedule->fresh()->recurrence);
         $this->assertSame('2026-03-15', $schedule->fresh()->start_date->toDateString());
+    }
+
+    public function test_update_sets_a_specific_months_schedule()
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => null, 'start_date' => '2026-01-01']);
+        $item = NeedsItem::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'schedule_id' => $schedule->id,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('needs.update', $item), [
+            'category_id' => $category->id,
+            'name' => $item->name,
+            'amount' => $item->amount,
+            'schedule' => [
+                'recurrence' => 'specific_months',
+                'start_date' => '2026-02-01',
+                'months' => [2, 8],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertSame(MonthlyRecurrence::SpecificMonths, $schedule->fresh()->recurrence);
+        $this->assertSame([2, 8], $schedule->fresh()->months);
     }
 
     public function test_update_without_a_schedule_removes_the_items_existing_schedule()
@@ -403,7 +504,7 @@ class NeedsControllerTest extends TestCase
     {
         $user = User::factory()->create();
         $category = Category::factory()->create();
-        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => RecurrenceFrequency::Monthly, 'start_date' => '2026-01-15']);
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => MonthlyRecurrence::Monthly, 'start_date' => '2026-01-15']);
         NeedsItem::factory()->create([
             'user_id' => $user->id,
             'category_id' => $category->id,

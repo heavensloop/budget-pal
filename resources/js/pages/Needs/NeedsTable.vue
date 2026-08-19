@@ -45,14 +45,30 @@ const { formatCurrency } = useCurrency();
 
 const sortableColumns: { key: SortColumn; label: string }[] = [
     { key: 'name', label: 'Item' },
-    { key: 'category', label: 'Category' },
     { key: 'amount', label: 'Amount' },
+    { key: 'category', label: 'Category' },
 ];
 
-function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
+function formatMonthYear(dateString: string): string {
+    return new Date(`${dateString}T00:00:00`).toLocaleDateString('en-US', {
         month: 'short',
-        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+// Needs without a schedule are assumed to repeat monthly by default; we
+// just don't have an anchor date to compute a real next payment date from,
+// so fall back to assuming it's due sometime next month.
+function nextPaymentLabel(item: NeedItem): string {
+    if (item.nextPaymentDate) {
+        return formatMonthYear(item.nextPaymentDate);
+    }
+
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+    return nextMonth.toLocaleDateString('en-US', {
+        month: 'short',
         year: 'numeric',
     });
 }
@@ -92,15 +108,22 @@ function onArchiveOrRestore(item: NeedItem) {
                             v-for="column in sortableColumns"
                             :key="column.key"
                             class="p-3 font-medium"
+                            :class="[
+                                column.key === 'amount' ? 'text-right' : '',
+                                column.key === 'name' ? 'w-1/4' : '',
+                            ]"
                         >
                             <button
                                 type="button"
                                 class="flex cursor-pointer items-center gap-1 uppercase hover:opacity-100"
-                                :class="
+                                :class="[
                                     props.sort === column.key
                                         ? 'opacity-100'
-                                        : 'opacity-70'
-                                "
+                                        : 'opacity-70',
+                                    column.key === 'amount'
+                                        ? 'ml-auto justify-end'
+                                        : '',
+                                ]"
                                 @click="emit('sort', column.key)"
                             >
                                 {{ column.label }}
@@ -120,7 +143,7 @@ function onArchiveOrRestore(item: NeedItem) {
                                 />
                             </button>
                         </th>
-                        <th class="p-3 font-medium">Next payment date</th>
+                        <th class="p-3 font-medium">Next Payment</th>
                         <th class="p-3 font-medium"></th>
                     </tr>
                 </thead>
@@ -130,7 +153,7 @@ function onArchiveOrRestore(item: NeedItem) {
                         :key="item.id"
                         class="border-b border-foreground/5 last:border-0"
                     >
-                        <td class="p-3">
+                        <td class="w-1/4 p-3">
                             {{ item.name }}
                             <span
                                 v-if="item.status === 'archived'"
@@ -139,17 +162,14 @@ function onArchiveOrRestore(item: NeedItem) {
                                 Archived
                             </span>
                         </td>
-                        <td class="p-3 opacity-70">{{ item.category }}</td>
-                        <td class="p-3">
+                        <td class="p-3 text-right">
                             {{ formatCurrency(item.amount, item.currencyCode) }}
                         </td>
+                        <td class="p-3 opacity-70">{{ item.category }}</td>
                         <td class="p-3">
-                            <span v-if="item.nextPaymentDate" class="text-sm">
-                                {{ formatDate(item.nextPaymentDate) }}
-                            </span>
-                            <span v-else class="text-sm opacity-50">
-                                Not scheduled
-                            </span>
+                            <span class="text-sm">{{
+                                nextPaymentLabel(item)
+                            }}</span>
                         </td>
                         <td class="p-3">
                             <div class="flex justify-end gap-1">
@@ -232,15 +252,9 @@ function onArchiveOrRestore(item: NeedItem) {
                     class="mt-3 flex items-center justify-between gap-2 border-t border-foreground/10 pt-3"
                     @click.stop
                 >
-                    <span
-                        v-if="item.nextPaymentDate"
-                        class="text-sm opacity-70"
-                    >
-                        {{ formatDate(item.nextPaymentDate) }}
-                    </span>
-                    <span v-else class="text-sm opacity-50">
-                        Not scheduled
-                    </span>
+                    <span class="text-sm opacity-70">{{
+                        nextPaymentLabel(item)
+                    }}</span>
                     <div class="flex gap-1">
                         <button
                             type="button"

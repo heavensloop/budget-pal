@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\MonthlyRecurrence;
 use App\Enums\NeedsItemStatus;
-use App\Enums\RecurrenceFrequency;
 use App\Enums\SortDirection;
 use Carbon\CarbonImmutable;
 use Database\Factories\NeedsItemFactory;
@@ -93,10 +93,9 @@ class NeedsItem extends Model
         }
 
         $dueDate = match ($schedule->recurrence) {
-            RecurrenceFrequency::Monthly => $this->nextMonthlyOccurrence($schedule->start_date, $today),
-            RecurrenceFrequency::Yearly => $this->nextYearlyOccurrence($schedule->start_date, $today),
-            RecurrenceFrequency::Weekly => $this->nextIntervalOccurrence($schedule->start_date, $today, 7),
-            RecurrenceFrequency::Biweekly => $this->nextIntervalOccurrence($schedule->start_date, $today, 14),
+            MonthlyRecurrence::Monthly => $this->nextMonthlyOccurrence($schedule->start_date, $today),
+            MonthlyRecurrence::EveryNMonths => $this->nextEveryNMonthsOccurrence($schedule->start_date, $today, $schedule->interval_months),
+            MonthlyRecurrence::SpecificMonths => $this->nextSpecificMonthsOccurrence($schedule->start_date, $today, $schedule->months ?? []),
         };
 
         if ($schedule->end_date && $dueDate->gt($schedule->end_date)) {
@@ -124,35 +123,53 @@ class NeedsItem extends Model
         return CarbonImmutable::create($nextMonth->year, $nextMonth->month, 1)->day(min($day, $nextMonth->daysInMonth));
     }
 
-    private function nextYearlyOccurrence(CarbonImmutable $startDate, CarbonImmutable $today): CarbonImmutable
+    private function nextEveryNMonthsOccurrence(CarbonImmutable $startDate, CarbonImmutable $today, int $intervalMonths): CarbonImmutable
     {
         if ($startDate->gt($today)) {
             return $startDate;
         }
 
-        $thisYearDays = CarbonImmutable::create($today->year, $startDate->month, 1)->daysInMonth;
-        $thisYear = CarbonImmutable::create($today->year, $startDate->month, 1)->day(min($startDate->day, $thisYearDays));
+        $monthsElapsed = ($today->year - $startDate->year) * 12 + ($today->month - $startDate->month);
+        $periodsElapsed = intdiv($monthsElapsed, $intervalMonths);
 
-        if (! $thisYear->lt($today)) {
-            return $thisYear;
-        }
+        $candidate = $this->addClampedMonths($startDate, $periodsElapsed * $intervalMonths);
 
-        $nextYear = $today->year + 1;
-        $nextYearDays = CarbonImmutable::create($nextYear, $startDate->month, 1)->daysInMonth;
-
-        return CarbonImmutable::create($nextYear, $startDate->month, 1)->day(min($startDate->day, $nextYearDays));
+        return $candidate->lt($today)
+            ? $this->addClampedMonths($startDate, ($periodsElapsed + 1) * $intervalMonths)
+            : $candidate;
     }
 
-    private function nextIntervalOccurrence(CarbonImmutable $startDate, CarbonImmutable $today, int $intervalDays): CarbonImmutable
+    /**
+     * @param  list<int>  $months  1 (January) through 12 (December)
+     */
+    private function nextSpecificMonthsOccurrence(CarbonImmutable $startDate, CarbonImmutable $today, array $months): CarbonImmutable
     {
         if ($startDate->gt($today)) {
             return $startDate;
         }
 
-        $intervalsElapsed = intdiv((int) $startDate->diffInDays($today), $intervalDays);
-        $candidate = $startDate->addDays($intervalsElapsed * $intervalDays);
+        sort($months);
+        $day = $startDate->day;
 
-        return $candidate->lt($today) ? $candidate->addDays($intervalDays) : $candidate;
+        foreach ([$today->year, $today->year + 1] as $year) {
+            foreach ($months as $month) {
+                $daysInMonth = CarbonImmutable::create($year, $month, 1)->daysInMonth;
+                $candidate = CarbonImmutable::create($year, $month, 1)->day(min($day, $daysInMonth));
+
+                if (! $candidate->lt($today)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        throw new \LogicException('Unreachable: scanned two full years without finding an occurrence.');
+    }
+
+    private function addClampedMonths(CarbonImmutable $date, int $months): CarbonImmutable
+    {
+        $target = CarbonImmutable::create($date->year, $date->month, 1)->addMonthsNoOverflow($months);
+
+        return $target->day(min($date->day, $target->daysInMonth));
     }
 
     /**

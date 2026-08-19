@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\RecurrenceFrequency;
+use App\Enums\MonthlyRecurrence;
 use Carbon\CarbonImmutable;
 use Database\Factories\ScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,14 +14,16 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property bool $is_active
- * @property RecurrenceFrequency|null $recurrence
+ * @property MonthlyRecurrence|null $recurrence
  * @property CarbonImmutable|null $start_date
  * @property CarbonImmutable|null $end_date
  * @property int|null $reminder_days_before
+ * @property int|null $interval_months
+ * @property list<int>|null $months
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['is_active', 'recurrence', 'start_date', 'end_date', 'reminder_days_before'])]
+#[Fillable(['is_active', 'recurrence', 'start_date', 'end_date', 'reminder_days_before', 'interval_months', 'months'])]
 class Schedule extends Model
 {
     /** @use HasFactory<ScheduleFactory> */
@@ -36,7 +38,7 @@ class Schedule extends Model
     }
 
     /**
-     * @return array{recurrence: string|null, startDate: string|null, endDate: string|null, reminderDaysBefore: int|null}
+     * @return array{recurrence: string|null, startDate: string|null, endDate: string|null, reminderDaysBefore: int|null, intervalMonths: int|null, months: list<int>|null}
      */
     public function toFrontendArray(): array
     {
@@ -45,6 +47,8 @@ class Schedule extends Model
             'startDate' => $this->start_date?->toDateString(),
             'endDate' => $this->end_date?->toDateString(),
             'reminderDaysBefore' => $this->reminder_days_before,
+            'intervalMonths' => $this->interval_months,
+            'months' => $this->months,
         ];
     }
 
@@ -57,10 +61,12 @@ class Schedule extends Model
     {
         return [
             'is_active' => 'boolean',
-            'recurrence' => RecurrenceFrequency::class,
+            'recurrence' => MonthlyRecurrence::class,
             'start_date' => 'date',
             'end_date' => 'date',
             'reminder_days_before' => 'integer',
+            'interval_months' => 'integer',
+            'months' => 'array',
         ];
     }
 }

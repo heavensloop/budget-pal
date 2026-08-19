@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import { Plus } from '@lucide/vue';
+import { ListChecks, Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import NeedsController from '@/actions/App/Http/Controllers/Web/NeedsController';
+import CategoryBarChart from '@/components/CategoryBarChart.vue';
 import ScheduleField from '@/components/ScheduleField.vue';
-import type { ScheduleValue } from '@/components/ScheduleField.vue';
+import type {
+    RecurrenceOption,
+    ScheduleValue,
+} from '@/components/ScheduleField.vue';
 import SearchableComboBox from '@/components/SearchableComboBox.vue';
 import type { SearchableComboBoxOption } from '@/components/SearchableComboBox.vue';
+import StatCard from '@/components/StatCard.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useCurrency } from '@/composables/useCurrency';
 import NeedsTable from './NeedsTable.vue';
 import type { NeedItem, SortColumn } from './NeedsTable.vue';
 
@@ -29,7 +35,33 @@ const page = usePage<{
     sort: SortColumn;
     direction: 'asc' | 'desc';
     showArchived: boolean;
+    recurrenceOptions: RecurrenceOption[];
 }>();
+
+const { formatCurrency } = useCurrency();
+
+const totalNeedsAmount = computed(() =>
+    page.props.items.reduce((sum, item) => sum + item.amount, 0),
+);
+
+const needsCurrencyCode = computed(
+    () => page.props.items[0]?.currencyCode ?? 'NGN',
+);
+
+const needsByCategory = computed(() => {
+    const totals = new Map<string, number>();
+
+    for (const item of page.props.items) {
+        totals.set(
+            item.category,
+            (totals.get(item.category) ?? 0) + item.amount,
+        );
+    }
+
+    return Array.from(totals, ([label, amount]) => ({ label, amount })).sort(
+        (a, b) => b.amount - a.amount,
+    );
+});
 
 function sortBy(column: SortColumn) {
     const direction =
@@ -72,16 +104,30 @@ const categoryOptions = computed(() =>
     })),
 );
 
+// Needs always repeat, so we default to Monthly with no start date chosen
+// yet - the user can pick a date or switch recurrence, but "does not
+// repeat" isn't an option for this domain.
+function defaultSchedule(): ScheduleValue {
+    return {
+        recurrence: 'monthly',
+        startDate: null,
+        endDate: null,
+        reminderDaysBefore: null,
+        intervalMonths: null,
+        months: null,
+    };
+}
+
 function openCreateDialog() {
     editingItem.value = null;
-    schedule.value = null;
+    schedule.value = defaultSchedule();
     selectedCategory.value = null;
     dialogOpen.value = true;
 }
 
 function openEditDialog(item: NeedItem) {
     editingItem.value = item;
-    schedule.value = item.schedule;
+    schedule.value = item.schedule ?? defaultSchedule();
     selectedCategory.value =
         categoryOptions.value.find(
             (option) => option.value === item.categoryId,
@@ -140,17 +186,45 @@ function destroy(item: NeedItem) {
         </div>
     </div>
 
-    <div class="mt-6 mb-10">
-        <NeedsTable
-            :items="page.props.items"
-            :sort="page.props.sort"
-            :direction="page.props.direction"
-            @sort="sortBy"
-            @edit="openEditDialog"
-            @archive="archiveItem"
-            @restore="restoreItem"
-            @destroy="destroy"
-        />
+    <div class="mt-6 mb-10 grid grid-cols-12 gap-6">
+        <div
+            class="col-span-12"
+            :class="page.props.items.length ? 'lg:col-span-8' : ''"
+        >
+            <NeedsTable
+                :items="page.props.items"
+                :sort="page.props.sort"
+                :direction="page.props.direction"
+                @sort="sortBy"
+                @edit="openEditDialog"
+                @archive="archiveItem"
+                @restore="restoreItem"
+                @destroy="destroy"
+            />
+        </div>
+
+        <div
+            v-if="page.props.items.length"
+            class="col-span-12 flex flex-col gap-6 lg:col-span-4"
+        >
+            <StatCard
+                :icon="ListChecks"
+                :value="formatCurrency(totalNeedsAmount, needsCurrencyCode)"
+                label="Total Needs"
+                :badge-text="`${page.props.items.length} item(s)`"
+            />
+
+            <div class="box p-6">
+                <h2 class="text-lg font-medium">Spend by category</h2>
+                <div class="mt-4">
+                    <CategoryBarChart
+                        :labels="needsByCategory.map((c) => c.label)"
+                        :amounts="needsByCategory.map((c) => c.amount)"
+                        :currency-code="needsCurrencyCode"
+                    />
+                </div>
+            </div>
+        </div>
     </div>
 
     <Dialog v-model:open="dialogOpen">
@@ -217,6 +291,8 @@ function destroy(item: NeedItem) {
                         v-model="schedule"
                         name="schedule"
                         :errors="errors"
+                        :recurrence-options="page.props.recurrenceOptions"
+                        required
                     />
                 </div>
 

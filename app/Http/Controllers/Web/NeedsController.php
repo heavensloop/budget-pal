@@ -6,6 +6,7 @@ use App\Actions\Budget\CreateNeedsItem;
 use App\Actions\Budget\MarkItemStatus;
 use App\Actions\Budget\UpdateNeedsItem;
 use App\Enums\CategoryType;
+use App\Enums\MonthlyRecurrence;
 use App\Enums\NeedsItemStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Needs\ShowNeedsRequest;
@@ -47,6 +48,7 @@ class NeedsController extends Controller
             'sort' => $sort,
             'direction' => $direction->value,
             'showArchived' => $showArchived,
+            'recurrenceOptions' => MonthlyRecurrence::options(),
         ]);
     }
 

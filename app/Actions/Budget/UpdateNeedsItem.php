@@ -22,6 +22,8 @@ class UpdateNeedsItem
                     'start_date' => $scheduleData['start_date'],
                     'end_date' => $scheduleData['end_date'] ?? null,
                     'reminder_days_before' => $scheduleData['reminder_days_before'] ?? null,
+                    'interval_months' => $scheduleData['interval_months'] ?? null,
+                    'months' => isset($scheduleData['months']) ? array_map(intval(...), $scheduleData['months']) : null,
                 ]);
             } else {
                 $item->schedule_id = Schedule::create([
@@ -30,6 +32,8 @@ class UpdateNeedsItem
                     'start_date' => $scheduleData['start_date'],
                     'end_date' => $scheduleData['end_date'] ?? null,
                     'reminder_days_before' => $scheduleData['reminder_days_before'] ?? null,
+                    'interval_months' => $scheduleData['interval_months'] ?? null,
+                    'months' => isset($scheduleData['months']) ? array_map(intval(...), $scheduleData['months']) : null,
                 ])->id;
             }
         } elseif ($item->schedule) {

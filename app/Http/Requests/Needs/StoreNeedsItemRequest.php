@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Needs;
 
-use App\Enums\RecurrenceFrequency;
+use App\Enums\MonthlyRecurrence;
 use App\Models\NeedsItem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,10 +30,13 @@ class StoreNeedsItemRequest extends FormRequest
             'amount' => ['required', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'schedule' => ['nullable', 'array'],
-            'schedule.recurrence' => ['nullable', Rule::enum(RecurrenceFrequency::class)],
+            'schedule.recurrence' => ['nullable', Rule::enum(MonthlyRecurrence::class)],
             'schedule.start_date' => ['required_with:schedule', 'date'],
             'schedule.end_date' => ['nullable', 'date', 'after_or_equal:schedule.start_date'],
             'schedule.reminder_days_before' => ['nullable', 'integer', 'between:0,365'],
+            'schedule.interval_months' => ['required_if:schedule.recurrence,every_n_months', 'integer', 'between:2,6'],
+            'schedule.months' => ['required_if:schedule.recurrence,specific_months', 'array', 'min:1'],
+            'schedule.months.*' => ['integer', 'between:1,12', 'distinct'],
         ];
 
         if (empty($this->input('schedule'))) {

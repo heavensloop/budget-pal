@@ -23,6 +23,8 @@ class CreateNeedsItem
                 'start_date' => $data['schedule']['start_date'],
                 'end_date' => $data['schedule']['end_date'] ?? null,
                 'reminder_days_before' => $data['schedule']['reminder_days_before'] ?? null,
+                'interval_months' => $data['schedule']['interval_months'] ?? null,
+                'months' => isset($data['schedule']['months']) ? array_map(intval(...), $data['schedule']['months']) : null,
             ]);
         }
 

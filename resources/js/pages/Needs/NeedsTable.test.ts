@@ -17,6 +17,8 @@ function makeItem(overrides: Partial<NeedItem> = {}): NeedItem {
             startDate: '2026-01-01',
             endDate: null,
             reminderDaysBefore: null,
+            intervalMonths: null,
+            months: null,
         },
         nextPaymentDate: '2026-09-01',
         notes: null,
@@ -73,10 +75,22 @@ describe('NeedsTable', () => {
         expect(wrapper.get('table').text()).toContain('Archived');
     });
 
-    it('shows "Not scheduled" when there is no next payment date', () => {
+    it('assumes next month when there is no next payment date', () => {
         const wrapper = mountTable([makeItem({ nextPaymentDate: null })]);
 
-        expect(wrapper.get('table').text()).toContain('Not scheduled');
+        const today = new Date();
+        const nextMonth = new Date(
+            today.getFullYear(),
+            today.getMonth() + 1,
+            1,
+        );
+        const expectedLabel = nextMonth.toLocaleDateString('en-US', {
+            month: 'short',
+            year: 'numeric',
+        });
+
+        expect(wrapper.get('table').text()).toContain(expectedLabel);
+        expect(wrapper.get('table').text()).not.toContain('Not scheduled');
     });
 
     it('emits sort with the clicked column', async () => {
@@ -132,7 +146,7 @@ describe('NeedsTable', () => {
         await card.trigger('click');
 
         expect(card.findAll('button')).toHaveLength(3);
-        expect(card.text()).toContain('Sep 1, 2026');
+        expect(card.text()).toContain('Sep 2026');
     });
 
     it('collapses the card again on a second click', async () => {
