@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import {
-    Banknote,
-    CreditCard,
-    BanknoteArrowDown,
-    Percent,
-    Plus,
-} from '@lucide/vue';
+import { Banknote, CreditCard, BanknoteArrowDown, Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import DebtsController from '@/actions/App/Http/Controllers/Web/DebtsController';
 import CategoryBarChart from '@/components/CategoryBarChart.vue';
@@ -211,27 +205,22 @@ function destroy(item: DebtItem) {
         </div>
     </div>
 
-    <div class="mt-6 mb-10 grid grid-cols-12 gap-6">
-        <div
-            class="col-span-12"
-            :class="page.props.items.length ? 'lg:col-span-8' : ''"
-        >
-            <DebtsTable
-                :items="page.props.items"
-                :sort="page.props.sort"
-                :direction="page.props.direction"
-                @sort="sortBy"
-                @edit="openEditDialog"
-                @archive="archiveItem"
-                @restore="restoreItem"
-                @destroy="destroy"
-                @record-payment="recordPayment"
-            />
-        </div>
+    <div class="mt-6 mb-10">
+        <DebtsTable
+            :items="page.props.items"
+            :sort="page.props.sort"
+            :direction="page.props.direction"
+            @sort="sortBy"
+            @edit="openEditDialog"
+            @archive="archiveItem"
+            @restore="restoreItem"
+            @destroy="destroy"
+            @record-payment="recordPayment"
+        />
 
         <div
             v-if="page.props.items.length"
-            class="col-span-12 flex flex-col gap-6 lg:col-span-4"
+            class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
         >
             <StatCard
                 :icon="CreditCard"
@@ -248,7 +237,7 @@ function destroy(item: DebtItem) {
             />
 
             <StatCard
-                :icon="Percent"
+                :icon="BanknoteArrowDown"
                 :value="formatCurrency(totalMonthlyInterest, debtsCurrencyCode)"
                 label="Monthly Interest"
                 :badge-text="`${page.props.items.length} item(s)`"
@@ -260,16 +249,16 @@ function destroy(item: DebtItem) {
                 label="Total Interest"
                 :badge-text="`${page.props.items.length} item(s)`"
             />
+        </div>
 
-            <div class="box p-6">
-                <h2 class="text-lg font-medium">Balance by category</h2>
-                <div class="mt-4">
-                    <CategoryBarChart
-                        :labels="balanceByCategory.map((c) => c.label)"
-                        :amounts="balanceByCategory.map((c) => c.amount)"
-                        :currency-code="debtsCurrencyCode"
-                    />
-                </div>
+        <div v-if="page.props.items.length" class="box mt-6 p-6">
+            <h2 class="text-lg font-medium">Balance by category</h2>
+            <div class="mt-4">
+                <CategoryBarChart
+                    :labels="balanceByCategory.map((c) => c.label)"
+                    :amounts="balanceByCategory.map((c) => c.amount)"
+                    :currency-code="debtsCurrencyCode"
+                />
             </div>
         </div>
     </div>
