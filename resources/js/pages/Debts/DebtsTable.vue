@@ -313,54 +313,53 @@ function onArchiveOrRestore(item: DebtItem) {
 
                 <div
                     v-if="expandedIds.has(item.id)"
-                    class="mt-3 flex items-center justify-between gap-2 border-t border-foreground/10 pt-3"
+                    class="mt-3 border-t border-foreground/10 pt-3"
                     @click.stop
                 >
-                    <div
-                        class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm opacity-70"
-                    >
-                        <span>{{ nextPaymentLabel(item) }}</span>
-                        <span>
-                            {{
-                                formatCurrency(
-                                    item.interestMonthly,
-                                    item.currencyCode,
-                                )
-                            }}
-                            ({{ item.interestRate.toFixed(1) }}%) monthly
-                            interest
-                        </span>
-                        <span>
-                            {{
-                                formatCurrency(
-                                    totalInterestAmount(item),
-                                    item.currencyCode,
-                                )
-                            }}
-                            ({{ totalInterestRate(item).toFixed(1) }}%) total
-                            interest
-                        </span>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="opacity-70">Next repayment</span>
+                            <span class="font-medium">{{
+                                nextPaymentLabel(item)
+                            }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="opacity-70">
+                                Next repayment amount
+                            </span>
+                            <span class="font-medium">
+                                {{
+                                    formatCurrency(
+                                        item.monthlyRepaymentAmount,
+                                        item.currencyCode,
+                                    )
+                                }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="flex gap-1">
+
+                    <div
+                        class="mt-3 flex justify-end gap-2 border-t border-foreground/10 pt-3"
+                    >
                         <button
                             type="button"
-                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-30"
+                            class="cursor-pointer rounded-lg p-3 hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-30"
                             title="Record Payment"
                             :disabled="!item.canRecordPayment"
                             @click="emit('recordPayment', item)"
                         >
-                            <Banknote class="size-4 opacity-60" />
+                            <Banknote class="size-5 opacity-60" />
                         </button>
                         <button
                             type="button"
-                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
+                            class="cursor-pointer rounded-lg p-3 hover:bg-foreground/5"
                             @click="emit('edit', item)"
                         >
-                            <Pencil class="size-4 opacity-60" />
+                            <Pencil class="size-5 opacity-60" />
                         </button>
                         <button
                             type="button"
-                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
+                            class="cursor-pointer rounded-lg p-3 hover:bg-foreground/5"
                             :title="
                                 item.status === 'archived'
                                     ? 'Restore'
@@ -370,16 +369,16 @@ function onArchiveOrRestore(item: DebtItem) {
                         >
                             <ArchiveRestore
                                 v-if="item.status === 'archived'"
-                                class="size-4 opacity-60"
+                                class="size-5 opacity-60"
                             />
-                            <Archive v-else class="size-4 opacity-60" />
+                            <Archive v-else class="size-5 opacity-60" />
                         </button>
                         <button
                             type="button"
-                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
+                            class="cursor-pointer rounded-lg p-3 hover:bg-foreground/5"
                             @click="emit('destroy', item)"
                         >
-                            <Trash2 class="size-4 text-danger" />
+                            <Trash2 class="size-5 text-danger" />
                         </button>
                     </div>
                 </div>
