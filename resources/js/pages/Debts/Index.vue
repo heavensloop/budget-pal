@@ -225,7 +225,7 @@ function destroy(item: DebtItem) {
             <StatCard
                 :icon="CreditCard"
                 :value="formatCurrency(totalBalanceOwed, debtsCurrencyCode)"
-                label="Total Balance Owed"
+                label="Total Amount to be repaid"
                 :badge-text="`${page.props.items.length} item(s)`"
             />
 
