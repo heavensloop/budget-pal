@@ -2,14 +2,13 @@
 import {
     Archive,
     ArchiveRestore,
-    ArrowDown,
-    ArrowUp,
     ChevronDown,
     Pencil,
     Trash2,
 } from '@lucide/vue';
 import { reactive } from 'vue';
 import type { ScheduleValue } from '@/components/ScheduleField.vue';
+import SortButton from '@/components/SortButton.vue';
 import { useCurrency } from '@/composables/useCurrency';
 
 export type NeedItem = {
@@ -113,35 +112,13 @@ function onArchiveOrRestore(item: NeedItem) {
                                 column.key === 'name' ? 'w-1/4' : '',
                             ]"
                         >
-                            <button
-                                type="button"
-                                class="flex cursor-pointer items-center gap-1 uppercase hover:opacity-100"
-                                :class="[
-                                    props.sort === column.key
-                                        ? 'opacity-100'
-                                        : 'opacity-70',
-                                    column.key === 'amount'
-                                        ? 'ml-auto justify-end'
-                                        : '',
-                                ]"
+                            <SortButton
+                                :label="column.label"
+                                :active="props.sort === column.key"
+                                :direction="props.direction"
+                                :align-end="column.key === 'amount'"
                                 @click="emit('sort', column.key)"
-                            >
-                                {{ column.label }}
-                                <ArrowUp
-                                    v-if="
-                                        props.sort === column.key &&
-                                        props.direction === 'asc'
-                                    "
-                                    class="size-3"
-                                />
-                                <ArrowDown
-                                    v-else-if="
-                                        props.sort === column.key &&
-                                        props.direction === 'desc'
-                                    "
-                                    class="size-3"
-                                />
-                            </button>
+                            />
                         </th>
                         <th class="p-3 font-medium">Next Payment</th>
                         <th class="p-3 font-medium"></th>

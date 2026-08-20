@@ -2,8 +2,6 @@
 import {
     Archive,
     ArchiveRestore,
-    ArrowDown,
-    ArrowUp,
     Banknote,
     ChevronDown,
     Pencil,
@@ -11,6 +9,7 @@ import {
 } from '@lucide/vue';
 import { reactive } from 'vue';
 import type { ScheduleValue } from '@/components/ScheduleField.vue';
+import SortButton from '@/components/SortButton.vue';
 import { useCurrency } from '@/composables/useCurrency';
 
 export type DebtItem = {
@@ -57,7 +56,7 @@ const { formatCurrency } = useCurrency();
 
 const sortableColumns: { key: SortColumn; label: string }[] = [
     { key: 'name', label: 'Item' },
-    { key: 'amount', label: 'Amount' },
+    { key: 'amount', label: 'Next Repayment Amount' },
     { key: 'balance', label: 'Balance' },
     { key: 'category', label: 'Category' },
 ];
@@ -138,39 +137,19 @@ function onArchiveOrRestore(item: DebtItem) {
                                 column.key === 'balance'
                                     ? 'text-right'
                                     : '',
-                                column.key === 'name' ? 'w-1/4' : '',
+                                column.key === 'name' ? 'w-1/6' : '',
                             ]"
                         >
-                            <button
-                                type="button"
-                                class="flex cursor-pointer items-center gap-1 uppercase hover:opacity-100"
-                                :class="[
-                                    props.sort === column.key
-                                        ? 'opacity-100'
-                                        : 'opacity-70',
+                            <SortButton
+                                :label="column.label"
+                                :active="props.sort === column.key"
+                                :direction="props.direction"
+                                :align-end="
                                     column.key === 'amount' ||
                                     column.key === 'balance'
-                                        ? 'ml-auto justify-end'
-                                        : '',
-                                ]"
+                                "
                                 @click="emit('sort', column.key)"
-                            >
-                                {{ column.label }}
-                                <ArrowUp
-                                    v-if="
-                                        props.sort === column.key &&
-                                        props.direction === 'asc'
-                                    "
-                                    class="size-3"
-                                />
-                                <ArrowDown
-                                    v-else-if="
-                                        props.sort === column.key &&
-                                        props.direction === 'desc'
-                                    "
-                                    class="size-3"
-                                />
-                            </button>
+                            />
                         </th>
                         <th class="p-3 text-right font-medium">
                             Monthly Interest
@@ -188,7 +167,7 @@ function onArchiveOrRestore(item: DebtItem) {
                         :key="item.id"
                         class="border-b border-foreground/5 last:border-0"
                     >
-                        <td class="w-1/4 p-3">
+                        <td class="w-1/6 p-3">
                             {{ item.name }}
                             <span
                                 v-if="item.status === 'archived'"
