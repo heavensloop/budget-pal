@@ -54,13 +54,6 @@ const emit = defineEmits<{
 
 const { formatCurrency } = useCurrency();
 
-const sortableColumns: { key: SortColumn; label: string }[] = [
-    { key: 'name', label: 'Item' },
-    { key: 'amount', label: 'Next Repayment Amount' },
-    { key: 'balance', label: 'Balance' },
-    { key: 'category', label: 'Category' },
-];
-
 function formatMonthYear(dateString: string): string {
     return new Date(`${dateString}T00:00:00`).toLocaleDateString('en-US', {
         month: 'short',
@@ -128,27 +121,35 @@ function onArchiveOrRestore(item: DebtItem) {
                     <tr
                         class="border-b border-foreground/10 text-xs uppercase opacity-60"
                     >
-                        <th
-                            v-for="column in sortableColumns"
-                            :key="column.key"
-                            class="p-3 font-medium"
-                            :class="[
-                                column.key === 'amount' ||
-                                column.key === 'balance'
-                                    ? 'text-right'
-                                    : '',
-                                column.key === 'name' ? 'w-1/6' : '',
-                            ]"
-                        >
+                        <th class="w-1/6 p-3 font-medium">
                             <SortButton
-                                :label="column.label"
-                                :active="props.sort === column.key"
+                                label="Item"
+                                :active="props.sort === 'name'"
                                 :direction="props.direction"
-                                :align-end="
-                                    column.key === 'amount' ||
-                                    column.key === 'balance'
-                                "
-                                @click="emit('sort', column.key)"
+                                @click="emit('sort', 'name')"
+                            />
+                        </th>
+                        <th class="p-3 text-right font-medium">
+                            Amount Borrowed
+                        </th>
+                        <th class="p-3 text-right font-medium">
+                            Total Repayment Amount
+                        </th>
+                        <th class="p-3 text-right font-medium">
+                            <SortButton
+                                label="Next Repayment Amount"
+                                :active="props.sort === 'amount'"
+                                :direction="props.direction"
+                                align-end
+                                @click="emit('sort', 'amount')"
+                            />
+                        </th>
+                        <th class="p-3 font-medium">
+                            <SortButton
+                                label="Category"
+                                :active="props.sort === 'category'"
+                                :direction="props.direction"
+                                @click="emit('sort', 'category')"
                             />
                         </th>
                         <th class="p-3 text-right font-medium">
@@ -177,26 +178,50 @@ function onArchiveOrRestore(item: DebtItem) {
                             </span>
                         </td>
                         <td class="p-3 text-right">
+                            <div>
+                                {{
+                                    formatCurrency(
+                                        item.amountBorrowed,
+                                        item.currencyCode,
+                                    )
+                                }}
+                            </div>
+                            <div class="mt-1 flex justify-end">
+                                <span
+                                    class="inline-block rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-normal opacity-70"
+                                >
+                                    {{
+                                        formatCurrency(
+                                            item.balance,
+                                            item.currencyCode,
+                                        )
+                                    }}
+                                    /
+                                    {{
+                                        formatCurrency(
+                                            item.totalRepaymentAmount,
+                                            item.currencyCode,
+                                        )
+                                    }}
+                                    left
+                                </span>
+                            </div>
+                        </td>
+                        <td class="p-3 text-right">
                             {{
                                 formatCurrency(
-                                    item.monthlyRepaymentAmount,
+                                    item.totalRepaymentAmount,
                                     item.currencyCode,
                                 )
                             }}
                         </td>
                         <td class="p-3 text-right">
                             {{
-                                formatCurrency(item.balance, item.currencyCode)
+                                formatCurrency(
+                                    item.monthlyRepaymentAmount,
+                                    item.currencyCode,
+                                )
                             }}
-                            <span class="opacity-60">
-                                /
-                                {{
-                                    formatCurrency(
-                                        item.totalRepaymentAmount,
-                                        item.currencyCode,
-                                    )
-                                }}
-                            </span>
                         </td>
                         <td class="p-3 opacity-70">{{ item.categoryLabel }}</td>
                         <td class="p-3 text-right opacity-70">
