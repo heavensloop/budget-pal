@@ -95,6 +95,74 @@ const local = reactive<{
     months: props.modelValue?.months ?? [],
 });
 
+// Monthly and specific-months schedules only ever care about the *day* of
+// start_date (see IsSchedulableItem) - the month/year is just an anchor.
+// So instead of making users pick a full date for these, we ask for the
+// day of month directly and synthesize a start_date behind the scenes,
+// anchored to whatever month/year is already there (or today, for a new
+// schedule) - "Every few months" and a one-time due date still need a
+// real date, since those genuinely depend on which month they start from.
+const DAY_OPTIONS = Array.from({ length: 28 }, (_, index) => index + 1);
+
+function ordinal(day: number): string {
+    if (day % 100 >= 11 && day % 100 <= 13) {
+        return `${day}th`;
+    }
+
+    switch (day % 10) {
+        case 1:
+            return `${day}st`;
+        case 2:
+            return `${day}nd`;
+        case 3:
+            return `${day}rd`;
+        default:
+            return `${day}th`;
+    }
+}
+
+const dayOfMonth = ref(
+    props.modelValue?.startDate
+        ? String(parseLocalDate(props.modelValue.startDate).getDate())
+        : '1',
+);
+
+function usesDayOfMonth(recurrence: RecurrenceChoice): boolean {
+    return recurrence === 'monthly' || recurrence === 'specific_months';
+}
+
+function syncStartDateFromDay() {
+    const base = local.startDate ? parseLocalDate(local.startDate) : new Date();
+    const year = base.getFullYear();
+    const month = base.getMonth() + 1;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const day = Math.min(Number(dayOfMonth.value) || 1, daysInMonth);
+
+    local.startDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+if (usesDayOfMonth(local.recurrence)) {
+    syncStartDateFromDay();
+}
+
+watch(dayOfMonth, () => {
+    if (usesDayOfMonth(local.recurrence)) {
+        syncStartDateFromDay();
+    }
+});
+
+watch(
+    () => local.recurrence,
+    (recurrence, previous) => {
+        if (usesDayOfMonth(recurrence) && recurrence !== previous) {
+            dayOfMonth.value = local.startDate
+                ? String(parseLocalDate(local.startDate).getDate())
+                : '1';
+            syncStartDateFromDay();
+        }
+    },
+);
+
 watch(
     () => [
         local.recurrence,
@@ -146,6 +214,7 @@ function clearSchedule() {
     local.reminderDaysBefore = '';
     local.intervalMonths = '';
     local.months = [];
+    dayOfMonth.value = '1';
     isEditing.value = false;
 }
 
@@ -393,7 +462,30 @@ function summaryText(value: {
                 </p>
             </div>
 
-            <div class="grid gap-2">
+            <div
+                v-if="
+                    local.recurrence === 'monthly' ||
+                    local.recurrence === 'specific_months'
+                "
+                class="grid gap-2"
+            >
+                <Label :for="`${name}-day-of-month`">Day of month</Label>
+                <select
+                    :id="`${name}-day-of-month`"
+                    v-model="dayOfMonth"
+                    class="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
+                >
+                    <option
+                        v-for="day in DAY_OPTIONS"
+                        :key="day"
+                        :value="String(day)"
+                    >
+                        {{ ordinal(day) }}
+                    </option>
+                </select>
+            </div>
+
+            <div v-else class="grid gap-2">
                 <Label :for="`${name}-start-date`">
                     {{ local.recurrence === 'none' ? 'Due date' : 'Starts on' }}
                 </Label>
@@ -423,7 +515,6 @@ function summaryText(value: {
                     :id="`${name}-end-date`"
                     v-model="local.endDate"
                     type="date"
-                    :min="local.startDate || undefined"
                 />
                 <p
                     v-if="errors[`${name}.end_date`]"
