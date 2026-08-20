@@ -54,51 +54,75 @@ class DebtsControllerTest extends TestCase
         $this->actingAs($user)->post(route('debts.store'), [
             'category' => 'auto',
             'name' => 'Car loan',
-            'principal' => 500000,
-            'balance' => 350000,
-            'amount' => 25000,
+            'amount_borrowed' => 500000,
+            'total_repayment_amount' => 560000,
+            'monthly_repayment_amount' => 25000,
+            'tenure_months' => 24,
             'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-01'],
         ]);
 
         $item = DebtItem::where('name', 'Car loan')->firstOrFail();
 
         $this->assertSame(LoanCategory::Auto, $item->category);
-        $this->assertSame('500000.00', $item->principal);
-        $this->assertSame('350000.00', $item->balance);
-        $this->assertSame('25000.00', $item->amount);
+        $this->assertSame('500000.00', $item->amount_borrowed);
+        $this->assertSame('560000.00', $item->total_repayment_amount);
+        $this->assertSame('25000.00', $item->monthly_repayment_amount);
+        $this->assertSame(24, $item->tenure_months);
+        $this->assertSame(0, $item->payments_made);
         $this->assertNotNull($item->schedule_id);
         $this->assertSame(MonthlyRecurrence::Monthly, $item->schedule->recurrence);
     }
 
-    public function test_store_defaults_the_balance_to_the_principal_when_not_provided()
+    public function test_store_accepts_an_initial_payments_made_count()
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)->post(route('debts.store'), [
             'category' => 'personal',
-            'name' => 'Personal loan',
-            'principal' => 200000,
-            'amount' => 20000,
+            'name' => 'Pre-existing loan',
+            'amount_borrowed' => 200000,
+            'total_repayment_amount' => 200000,
+            'monthly_repayment_amount' => 20000,
+            'tenure_months' => 10,
+            'payments_made' => 3,
         ]);
 
-        $item = DebtItem::where('name', 'Personal loan')->firstOrFail();
+        $item = DebtItem::where('name', 'Pre-existing loan')->firstOrFail();
 
-        $this->assertSame('200000.00', $item->balance);
+        $this->assertSame(3, $item->payments_made);
     }
 
-    public function test_store_validates_principal_is_numeric_and_non_negative()
+    public function test_store_validates_amount_borrowed_is_numeric_and_non_negative()
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->post(route('debts.store'), [
             'category' => 'personal',
-            'name' => 'Bad principal',
-            'principal' => -100,
-            'amount' => 1000,
+            'name' => 'Bad amount',
+            'amount_borrowed' => -100,
+            'total_repayment_amount' => 1000,
+            'monthly_repayment_amount' => 100,
+            'tenure_months' => 10,
         ]);
 
-        $response->assertSessionHasErrors('principal');
-        $this->assertDatabaseMissing('debt_items', ['name' => 'Bad principal']);
+        $response->assertSessionHasErrors('amount_borrowed');
+        $this->assertDatabaseMissing('debt_items', ['name' => 'Bad amount']);
+    }
+
+    public function test_store_requires_total_repayment_amount_to_be_at_least_the_amount_borrowed()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('debts.store'), [
+            'category' => 'personal',
+            'name' => 'Bad total',
+            'amount_borrowed' => 100000,
+            'total_repayment_amount' => 50000,
+            'monthly_repayment_amount' => 10000,
+            'tenure_months' => 10,
+        ]);
+
+        $response->assertSessionHasErrors('total_repayment_amount');
     }
 
     public function test_store_validates_the_category_is_a_known_value()
@@ -108,8 +132,10 @@ class DebtsControllerTest extends TestCase
         $response = $this->actingAs($user)->post(route('debts.store'), [
             'category' => 'not-a-real-category',
             'name' => 'Bad category',
-            'principal' => 1000,
-            'amount' => 100,
+            'amount_borrowed' => 1000,
+            'total_repayment_amount' => 1000,
+            'monthly_repayment_amount' => 100,
+            'tenure_months' => 10,
         ]);
 
         $response->assertSessionHasErrors('category');
@@ -127,8 +153,10 @@ class DebtsControllerTest extends TestCase
         $response = $this->actingAs($user)->post(route('debts.store'), [
             'category' => 'personal',
             'name' => 'Loan from Dad',
-            'principal' => 1000,
-            'amount' => 100,
+            'amount_borrowed' => 1000,
+            'total_repayment_amount' => 1000,
+            'monthly_repayment_amount' => 100,
+            'tenure_months' => 10,
         ]);
 
         $response->assertSessionHasErrors('name');
@@ -141,21 +169,22 @@ class DebtsControllerTest extends TestCase
         $item = DebtItem::factory()->create([
             'user_id' => $user->id,
             'category' => LoanCategory::Personal,
-            'principal' => 100000,
-            'balance' => 100000,
+            'amount_borrowed' => 100000,
+            'total_repayment_amount' => 100000,
         ]);
 
         $this->actingAs($user)->put(route('debts.update', $item), [
             'category' => 'credit_card',
             'name' => $item->name,
-            'principal' => 100000,
-            'balance' => 60000,
-            'amount' => $item->amount,
+            'amount_borrowed' => 100000,
+            'total_repayment_amount' => 120000,
+            'monthly_repayment_amount' => $item->monthly_repayment_amount,
+            'tenure_months' => $item->tenure_months,
         ]);
 
         $item->refresh();
 
-        $this->assertSame('60000.00', $item->balance);
+        $this->assertSame('120000.00', $item->total_repayment_amount);
         $this->assertSame(LoanCategory::CreditCard, $item->category);
     }
 
@@ -171,9 +200,10 @@ class DebtsControllerTest extends TestCase
         $this->actingAs($user)->put(route('debts.update', $item), [
             'category' => $item->category->value,
             'name' => $item->name,
-            'principal' => $item->principal,
-            'balance' => $item->balance,
-            'amount' => $item->amount,
+            'amount_borrowed' => $item->amount_borrowed,
+            'total_repayment_amount' => $item->total_repayment_amount,
+            'monthly_repayment_amount' => $item->monthly_repayment_amount,
+            'tenure_months' => $item->tenure_months,
         ]);
 
         $this->assertNull($item->fresh()->schedule_id);
@@ -189,8 +219,10 @@ class DebtsControllerTest extends TestCase
         $response = $this->actingAs($user)->put(route('debts.update', $item), [
             'category' => 'personal',
             'name' => 'Hijacked',
-            'principal' => 1,
-            'amount' => 1,
+            'amount_borrowed' => 1,
+            'total_repayment_amount' => 1,
+            'monthly_repayment_amount' => 1,
+            'tenure_months' => 1,
         ]);
 
         $response->assertForbidden();
@@ -277,13 +309,17 @@ class DebtsControllerTest extends TestCase
         $user = User::factory()->create();
         DebtItem::factory()->create([
             'user_id' => $user->id,
-            'principal' => 50000,
-            'balance' => 50000,
+            'total_repayment_amount' => 50000,
+            'monthly_repayment_amount' => 5000,
+            'tenure_months' => 10,
+            'payments_made' => 0,
         ]);
         DebtItem::factory()->create([
             'user_id' => $user->id,
-            'principal' => 5000,
-            'balance' => 5000,
+            'total_repayment_amount' => 5000,
+            'monthly_repayment_amount' => 500,
+            'tenure_months' => 10,
+            'payments_made' => 0,
         ]);
 
         $response = $this->actingAs($user)->get(
@@ -296,21 +332,42 @@ class DebtsControllerTest extends TestCase
         );
     }
 
-    public function test_record_payment_decrements_the_balance_and_sets_the_last_payment_date()
+    public function test_index_sorts_by_amount()
+    {
+        $user = User::factory()->create();
+        DebtItem::factory()->create([
+            'user_id' => $user->id,
+            'monthly_repayment_amount' => 50000,
+        ]);
+        DebtItem::factory()->create([
+            'user_id' => $user->id,
+            'monthly_repayment_amount' => 5000,
+        ]);
+
+        $response = $this->actingAs($user)->get(
+            route('debts.index', ['sort' => 'amount', 'direction' => 'asc']),
+        );
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.monthlyRepaymentAmount', 5000)
+            ->where('items.1.monthlyRepaymentAmount', 50000),
+        );
+    }
+
+    public function test_record_payment_increments_payments_made_and_sets_the_last_payment_date()
     {
         $user = User::factory()->create();
         $item = DebtItem::factory()->create([
             'user_id' => $user->id,
-            'principal' => 100000,
-            'balance' => 100000,
-            'amount' => 15000,
+            'tenure_months' => 12,
+            'payments_made' => 3,
         ]);
 
         $response = $this->actingAs($user)->patch(route('debts.payment', $item));
 
         $response->assertSessionHasNoErrors();
         $response->assertRedirect();
-        $this->assertSame('85000.00', $item->fresh()->balance);
+        $this->assertSame(4, $item->fresh()->payments_made);
         $this->assertSame(CarbonImmutable::today()->toDateString(), $item->fresh()->last_payment_date->toDateString());
     }
 
@@ -321,16 +378,30 @@ class DebtsControllerTest extends TestCase
         $item = DebtItem::factory()->create([
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
-            'principal' => 100000,
-            'balance' => 100000,
-            'amount' => 15000,
+            'tenure_months' => 12,
+            'payments_made' => 3,
             'last_payment_date' => CarbonImmutable::today()->toDateString(),
         ]);
 
         $response = $this->actingAs($user)->patch(route('debts.payment', $item));
 
         $response->assertSessionHasErrors('payment');
-        $this->assertSame('100000.00', $item->fresh()->balance);
+        $this->assertSame(3, $item->fresh()->payments_made);
+    }
+
+    public function test_record_payment_is_rejected_once_fully_paid_off()
+    {
+        $user = User::factory()->create();
+        $item = DebtItem::factory()->create([
+            'user_id' => $user->id,
+            'tenure_months' => 5,
+            'payments_made' => 5,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('debts.payment', $item));
+
+        $response->assertSessionHasErrors('payment');
+        $this->assertSame(5, $item->fresh()->payments_made);
     }
 
     public function test_record_payment_auto_archives_the_debt_once_fully_paid()
@@ -338,9 +409,8 @@ class DebtsControllerTest extends TestCase
         $user = User::factory()->create();
         $item = DebtItem::factory()->create([
             'user_id' => $user->id,
-            'principal' => 15000,
-            'balance' => 15000,
-            'amount' => 15000,
+            'tenure_months' => 1,
+            'payments_made' => 0,
             'status' => DebtItemStatus::Pending,
         ]);
 
@@ -365,12 +435,34 @@ class DebtsControllerTest extends TestCase
         $user = User::factory()->create();
         DebtItem::factory()->create([
             'user_id' => $user->id,
-            'balance' => 50000,
+            'tenure_months' => 10,
+            'payments_made' => 0,
             'last_payment_date' => null,
         ]);
 
         $response = $this->actingAs($user)->get(route('debts.index'));
 
         $response->assertInertia(fn ($page) => $page->where('items.0.canRecordPayment', true));
+    }
+
+    public function test_index_includes_the_computed_interest_fields()
+    {
+        $user = User::factory()->create();
+        DebtItem::factory()->create([
+            'user_id' => $user->id,
+            'amount_borrowed' => 100000,
+            'total_repayment_amount' => 124000,
+            'tenure_months' => 12,
+            'payments_made' => 0,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('debts.index'));
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('items.0.interestMonthly', 2000)
+            ->where('items.0.interestRate', 2)
+            ->where('items.0.balance', 124000)
+            ->where('items.0.remainingTenure', 12),
+        );
     }
 }

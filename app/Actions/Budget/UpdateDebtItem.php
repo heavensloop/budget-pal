@@ -45,9 +45,11 @@ class UpdateDebtItem
             'schedule_id' => $item->schedule_id,
             'category' => $data['category'],
             'name' => $data['name'],
-            'principal' => $data['principal'],
-            'balance' => $data['balance'] ?? $item->balance,
-            'amount' => $data['amount'],
+            'amount_borrowed' => $data['amount_borrowed'],
+            'total_repayment_amount' => $data['total_repayment_amount'],
+            'monthly_repayment_amount' => $data['monthly_repayment_amount'],
+            'tenure_months' => $data['tenure_months'],
+            'payments_made' => $data['payments_made'] ?? $item->payments_made,
             'notes' => $data['notes'] ?? null,
         ]);
 

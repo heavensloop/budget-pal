@@ -10,11 +10,10 @@ class RecordDebtPayment
 {
     public function __invoke(DebtItem $item): DebtItem
     {
-        $newBalance = max(0.0, round((float) $item->balance - (float) $item->amount, 2));
-        $item->balance = number_format($newBalance, 2, '.', '');
+        $item->payments_made = min($item->tenure_months, $item->payments_made + 1);
         $item->last_payment_date = CarbonImmutable::today();
 
-        if ((float) $item->balance <= 0.0) {
+        if ($item->payments_made >= $item->tenure_months) {
             $item->status = DebtItemStatus::Archived;
         }
 

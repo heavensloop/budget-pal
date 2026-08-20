@@ -86,36 +86,89 @@ class DebtItemTest extends TestCase
         $this->assertTrue($item->hasPaidCurrentPeriod());
     }
 
-    public function test_record_debt_payment_decrements_the_balance()
+    public function test_balance_is_total_repayment_minus_what_has_been_paid_so_far()
     {
-        $item = DebtItem::factory()->create(['principal' => 100000, 'balance' => 100000, 'amount' => 15000]);
+        $item = DebtItem::factory()->create([
+            'total_repayment_amount' => 120000,
+            'monthly_repayment_amount' => 10000,
+            'tenure_months' => 12,
+            'payments_made' => 3,
+        ]);
+
+        $this->assertSame(90000.0, $item->balance());
+    }
+
+    public function test_balance_is_clamped_at_zero()
+    {
+        $item = DebtItem::factory()->create([
+            'total_repayment_amount' => 10000,
+            'monthly_repayment_amount' => 10000,
+            'tenure_months' => 1,
+            'payments_made' => 1,
+        ]);
+
+        $this->assertSame(0.0, $item->balance());
+    }
+
+    public function test_remaining_tenure_is_tenure_minus_payments_made()
+    {
+        $item = DebtItem::factory()->create(['tenure_months' => 12, 'payments_made' => 5]);
+
+        $this->assertSame(7, $item->remainingTenure());
+    }
+
+    public function test_interest_monthly_spreads_the_total_interest_across_the_tenure()
+    {
+        $item = DebtItem::factory()->create([
+            'amount_borrowed' => 100000,
+            'total_repayment_amount' => 124000,
+            'tenure_months' => 12,
+        ]);
+
+        $this->assertSame(2000.0, $item->interestMonthly());
+    }
+
+    public function test_interest_rate_is_the_monthly_interest_as_a_percentage_of_amount_borrowed()
+    {
+        $item = DebtItem::factory()->create([
+            'amount_borrowed' => 100000,
+            'total_repayment_amount' => 124000,
+            'tenure_months' => 12,
+        ]);
+
+        $this->assertSame(2.0, $item->interestRate());
+    }
+
+    public function test_record_debt_payment_increments_payments_made()
+    {
+        $item = DebtItem::factory()->create(['tenure_months' => 12, 'payments_made' => 3]);
 
         $item = (new RecordDebtPayment)($item);
 
-        $this->assertSame('85000.00', $item->balance);
+        $this->assertSame(4, $item->payments_made);
     }
 
-    public function test_record_debt_payment_clamps_the_balance_at_zero()
+    public function test_record_debt_payment_does_not_exceed_the_tenure()
     {
-        $item = DebtItem::factory()->create(['principal' => 10000, 'balance' => 10000, 'amount' => 15000]);
+        $item = DebtItem::factory()->create(['tenure_months' => 5, 'payments_made' => 5]);
 
         $item = (new RecordDebtPayment)($item);
 
-        $this->assertSame('0.00', $item->balance);
+        $this->assertSame(5, $item->payments_made);
     }
 
-    public function test_record_debt_payment_auto_archives_the_debt_once_the_balance_reaches_zero()
+    public function test_record_debt_payment_auto_archives_the_debt_once_the_tenure_is_complete()
     {
-        $item = DebtItem::factory()->create(['principal' => 15000, 'balance' => 15000, 'amount' => 15000, 'status' => DebtItemStatus::Pending]);
+        $item = DebtItem::factory()->create(['tenure_months' => 1, 'payments_made' => 0, 'status' => DebtItemStatus::Pending]);
 
         $item = (new RecordDebtPayment)($item);
 
         $this->assertSame(DebtItemStatus::Archived, $item->status);
     }
 
-    public function test_record_debt_payment_does_not_archive_while_balance_remains()
+    public function test_record_debt_payment_does_not_archive_while_payments_remain()
     {
-        $item = DebtItem::factory()->create(['principal' => 100000, 'balance' => 100000, 'amount' => 15000, 'status' => DebtItemStatus::Pending]);
+        $item = DebtItem::factory()->create(['tenure_months' => 12, 'payments_made' => 3, 'status' => DebtItemStatus::Pending]);
 
         $item = (new RecordDebtPayment)($item);
 
@@ -124,7 +177,7 @@ class DebtItemTest extends TestCase
 
     public function test_record_debt_payment_sets_the_last_payment_date_to_today()
     {
-        $item = DebtItem::factory()->create(['balance' => 100000, 'amount' => 15000, 'last_payment_date' => null]);
+        $item = DebtItem::factory()->create(['tenure_months' => 12, 'payments_made' => 0, 'last_payment_date' => null]);
 
         $item = (new RecordDebtPayment)($item);
 

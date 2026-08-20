@@ -22,9 +22,11 @@ use Illuminate\Support\Carbon;
  * @property LoanCategory $category
  * @property int|null $schedule_id
  * @property string $name
- * @property string $principal
- * @property string $balance
- * @property string $amount
+ * @property string $amount_borrowed
+ * @property string $total_repayment_amount
+ * @property string $monthly_repayment_amount
+ * @property int $tenure_months
+ * @property int $payments_made
  * @property string $currency_code
  * @property DebtItemStatus $status
  * @property CarbonImmutable|null $last_payment_date
@@ -37,9 +39,11 @@ use Illuminate\Support\Carbon;
     'category',
     'schedule_id',
     'name',
-    'principal',
-    'balance',
-    'amount',
+    'amount_borrowed',
+    'total_repayment_amount',
+    'monthly_repayment_amount',
+    'tenure_months',
+    'payments_made',
     'currency_code',
     'status',
     'last_payment_date',
@@ -63,6 +67,49 @@ class DebtItem extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The remaining amount left to pay: the total repayment obligation
+     * minus what's already been paid off (monthly repayment x payments
+     * made). Clamped at 0 so an over-recorded payment count can't go
+     * negative.
+     */
+    public function balance(): float
+    {
+        $paidSoFar = (float) $this->monthly_repayment_amount * $this->payments_made;
+
+        return max(0.0, (float) $this->total_repayment_amount - $paidSoFar);
+    }
+
+    public function remainingTenure(): int
+    {
+        return max(0, $this->tenure_months - $this->payments_made);
+    }
+
+    /**
+     * Average monthly interest: total interest (total repayment - amount
+     * borrowed) spread evenly across the tenure.
+     */
+    public function interestMonthly(): float
+    {
+        if ($this->tenure_months <= 0) {
+            return 0.0;
+        }
+
+        return ((float) $this->total_repayment_amount - (float) $this->amount_borrowed) / $this->tenure_months;
+    }
+
+    /**
+     * The average monthly interest as a percentage of the amount borrowed.
+     */
+    public function interestRate(): float
+    {
+        if ((float) $this->amount_borrowed <= 0.0) {
+            return 0.0;
+        }
+
+        return ($this->interestMonthly() / (float) $this->amount_borrowed) * 100;
     }
 
     /**
@@ -101,6 +148,18 @@ class DebtItem extends Model
             $column = 'name';
         }
 
+        if ($column === 'amount') {
+            $query->orderBy('monthly_repayment_amount', $direction->value);
+
+            return;
+        }
+
+        if ($column === 'balance') {
+            $query->orderByRaw('(total_repayment_amount - (monthly_repayment_amount * payments_made)) '.$direction->value);
+
+            return;
+        }
+
         $query->orderBy($column, $direction->value);
     }
 
@@ -112,9 +171,11 @@ class DebtItem extends Model
     protected function casts(): array
     {
         return [
-            'principal' => 'decimal:2',
-            'balance' => 'decimal:2',
-            'amount' => 'decimal:2',
+            'amount_borrowed' => 'decimal:2',
+            'total_repayment_amount' => 'decimal:2',
+            'monthly_repayment_amount' => 'decimal:2',
+            'tenure_months' => 'integer',
+            'payments_made' => 'integer',
             'status' => DebtItemStatus::class,
             'category' => LoanCategory::class,
             'last_payment_date' => 'date',

@@ -20,16 +20,19 @@ class DebtItemFactory extends Factory
      */
     public function definition(): array
     {
-        $principal = fake()->randomFloat(2, 50000, 2000000);
+        $amountBorrowed = fake()->randomFloat(2, 50000, 2000000);
+        $tenureMonths = fake()->numberBetween(6, 24);
 
         return [
             'user_id' => User::factory(),
             'category' => fake()->randomElement(LoanCategory::cases()),
             'schedule_id' => null,
             'name' => fake()->words(2, true),
-            'principal' => $principal,
-            'balance' => $principal,
-            'amount' => fake()->randomFloat(2, 1000, 50000),
+            'amount_borrowed' => $amountBorrowed,
+            'total_repayment_amount' => $amountBorrowed,
+            'monthly_repayment_amount' => round($amountBorrowed / $tenureMonths, 2),
+            'tenure_months' => $tenureMonths,
+            'payments_made' => 0,
             'currency_code' => 'NGN',
             'status' => DebtItemStatus::Pending,
             'last_payment_date' => null,

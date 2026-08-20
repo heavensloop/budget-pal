@@ -87,6 +87,12 @@ class DebtsController extends Controller
     {
         Gate::authorize('update', $debt);
 
+        if ($debt->payments_made >= $debt->tenure_months) {
+            return back()->withErrors([
+                'payment' => 'This debt has already been fully paid off.',
+            ]);
+        }
+
         if ($debt->hasPaidCurrentPeriod()) {
             return back()->withErrors([
                 'payment' => 'A payment has already been recorded for this period.',
@@ -108,15 +114,21 @@ class DebtsController extends Controller
             'category' => $item->category->value,
             'categoryLabel' => $item->category->getReadable(),
             'name' => $item->name,
-            'principal' => (float) $item->principal,
-            'balance' => (float) $item->balance,
-            'amount' => (float) $item->amount,
+            'amountBorrowed' => (float) $item->amount_borrowed,
+            'totalRepaymentAmount' => (float) $item->total_repayment_amount,
+            'monthlyRepaymentAmount' => (float) $item->monthly_repayment_amount,
+            'tenureMonths' => $item->tenure_months,
+            'paymentsMade' => $item->payments_made,
+            'balance' => $item->balance(),
+            'remainingTenure' => $item->remainingTenure(),
+            'interestMonthly' => $item->interestMonthly(),
+            'interestRate' => $item->interestRate(),
             'currencyCode' => $item->currency_code,
             'status' => $item->status->value,
             'lastPaymentDate' => $item->last_payment_date?->toDateString(),
             'schedule' => $item->schedule?->toFrontendArray(),
             'nextPaymentDate' => $item->nextPaymentDate()?->toDateString(),
-            'canRecordPayment' => ! $item->hasPaidCurrentPeriod() && (float) $item->balance > 0.0,
+            'canRecordPayment' => ! $item->hasPaidCurrentPeriod() && $item->payments_made < $item->tenure_months,
             'notes' => $item->notes,
         ];
     }
