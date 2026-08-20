@@ -281,7 +281,10 @@ function onArchiveOrRestore(item: DebtItem) {
                                             />
                                         </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuContent
+                                        align="end"
+                                        class="flex flex-col gap-1 p-2"
+                                    >
                                         <DropdownMenuItem
                                             :disabled="!item.canRecordPayment"
                                             @click="
