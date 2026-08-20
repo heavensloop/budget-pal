@@ -118,9 +118,15 @@ class DebtItem extends Model
      * rather than allowing an accidental double paydown. A one-time debt
      * (or one with no schedule at all) has no "next period" to roll into,
      * so any recorded payment blocks further ones. A recurring debt is
-     * still "in the paid period" when the next due date computed from the
-     * day after the last payment matches the next due date computed from
-     * today - i.e. no new period has started since that payment.
+     * still "in the paid period" when the occurrence the last payment
+     * covered (the next due date on/after that payment) matches the
+     * occurrence currently due (the next due date on/after today) - i.e.
+     * no new period has started since that payment. Comparing from the
+     * payment date itself (not the day after) matters: when a payment is
+     * recorded exactly on its due date, shifting the reference forward a
+     * day would skip past that occurrence and compare against next
+     * period's instead, making today's payment look like it covered a
+     * different period than it actually did.
      */
     public function hasPaidCurrentPeriod(): bool
     {
@@ -132,7 +138,7 @@ class DebtItem extends Model
             return true;
         }
 
-        $fromLastPayment = $this->nextPaymentDate($this->last_payment_date->addDay());
+        $fromLastPayment = $this->nextPaymentDate($this->last_payment_date);
         $fromToday = $this->nextPaymentDate(CarbonImmutable::today());
 
         return $fromLastPayment !== null && $fromToday !== null && $fromLastPayment->equalTo($fromToday);

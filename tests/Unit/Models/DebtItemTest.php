@@ -86,6 +86,23 @@ class DebtItemTest extends TestCase
         $this->assertTrue($item->hasPaidCurrentPeriod());
     }
 
+    public function test_has_paid_current_period_is_true_when_payment_was_recorded_exactly_on_the_due_date()
+    {
+        // Regression: comparing from last_payment_date + 1 day used to skip
+        // past today's occurrence and compare against next month's instead,
+        // so a payment recorded exactly on its due date looked like it was
+        // for a different period than "today" - falsely allowing a second
+        // payment the same day.
+        $schedule = Schedule::factory()->create(['recurrence' => MonthlyRecurrence::Monthly, 'start_date' => '2026-01-15']);
+        $item = DebtItem::factory()->create(['schedule_id' => $schedule->id, 'last_payment_date' => '2026-01-15']);
+
+        CarbonImmutable::setTestNow('2026-01-15');
+
+        $this->assertTrue($item->hasPaidCurrentPeriod());
+
+        CarbonImmutable::setTestNow();
+    }
+
     public function test_balance_is_total_repayment_minus_what_has_been_paid_so_far()
     {
         $item = DebtItem::factory()->create([
