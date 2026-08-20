@@ -104,13 +104,13 @@ const categoryOptions = computed(() =>
     })),
 );
 
-// Needs always repeat, so we default to Monthly with no start date chosen
-// yet - the user can pick a date or switch recurrence, but "does not
-// repeat" isn't an option for this domain.
+// Needs always repeat, so we default to Monthly starting today - the
+// user can change the date or switch recurrence, but "does not repeat"
+// isn't an option for this domain.
 function defaultSchedule(): ScheduleValue {
     return {
         recurrence: 'monthly',
-        startDate: null,
+        startDate: new Date().toISOString().slice(0, 10),
         endDate: null,
         reminderDaysBefore: null,
         intervalMonths: null,
