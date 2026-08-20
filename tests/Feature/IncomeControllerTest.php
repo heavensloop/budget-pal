@@ -92,30 +92,27 @@ class IncomeControllerTest extends TestCase
         $response->assertSessionHasErrors('category');
     }
 
-    public function test_store_rejects_a_duplicate_one_time_item_name()
+    public function test_store_requires_a_schedule()
     {
         $user = User::factory()->create();
-        IncomeItem::factory()->create([
-            'user_id' => $user->id,
-            'schedule_id' => null,
-            'name' => 'Birthday gift',
-        ]);
 
         $response = $this->actingAs($user)->post(route('income.store'), [
             'category' => 'gift',
-            'name' => 'Birthday gift',
+            'name' => 'No schedule gift',
             'amount' => 1000,
         ]);
 
-        $response->assertSessionHasErrors('name');
-        $this->assertSame(1, IncomeItem::where('name', 'Birthday gift')->count());
+        $response->assertSessionHasErrors('schedule');
+        $this->assertDatabaseMissing('income_items', ['name' => 'No schedule gift']);
     }
 
     public function test_update_changes_the_items_fields()
     {
         $user = User::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true]);
         $item = IncomeItem::factory()->create([
             'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
             'category' => IncomeCategory::Salary,
             'amount' => 300000,
         ]);
@@ -124,6 +121,7 @@ class IncomeControllerTest extends TestCase
             'category' => 'freelance',
             'name' => $item->name,
             'amount' => 450000,
+            'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-01'],
         ]);
 
         $item->refresh();
@@ -132,7 +130,7 @@ class IncomeControllerTest extends TestCase
         $this->assertSame(IncomeCategory::Freelance, $item->category);
     }
 
-    public function test_update_without_a_schedule_removes_the_items_existing_schedule()
+    public function test_update_requires_a_schedule()
     {
         $user = User::factory()->create();
         $schedule = Schedule::factory()->create(['is_active' => true]);
@@ -141,14 +139,40 @@ class IncomeControllerTest extends TestCase
             'schedule_id' => $schedule->id,
         ]);
 
-        $this->actingAs($user)->put(route('income.update', $item), [
+        $response = $this->actingAs($user)->put(route('income.update', $item), [
             'category' => $item->category->value,
             'name' => $item->name,
             'amount' => $item->amount,
         ]);
 
-        $this->assertNull($item->fresh()->schedule_id);
-        $this->assertDatabaseMissing('schedules', ['id' => $schedule->id]);
+        $response->assertSessionHasErrors('schedule');
+        $this->assertSame($schedule->id, $item->fresh()->schedule_id);
+        $this->assertDatabaseHas('schedules', ['id' => $schedule->id]);
+    }
+
+    public function test_update_sets_a_specific_months_schedule()
+    {
+        $user = User::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => null, 'start_date' => '2026-01-01']);
+        $item = IncomeItem::factory()->create([
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('income.update', $item), [
+            'category' => $item->category->value,
+            'name' => $item->name,
+            'amount' => $item->amount,
+            'schedule' => [
+                'recurrence' => 'specific_months',
+                'start_date' => '2026-02-01',
+                'months' => [2, 8],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertSame(MonthlyRecurrence::SpecificMonths, $schedule->fresh()->recurrence);
+        $this->assertSame([2, 8], $schedule->fresh()->months);
     }
 
     public function test_a_user_cannot_update_another_users_item()

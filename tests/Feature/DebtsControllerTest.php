@@ -85,6 +85,7 @@ class DebtsControllerTest extends TestCase
             'monthly_repayment_amount' => 20000,
             'tenure_months' => 10,
             'payments_made' => 3,
+            'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-01'],
         ]);
 
         $item = DebtItem::where('name', 'Pre-existing loan')->firstOrFail();
@@ -141,33 +142,30 @@ class DebtsControllerTest extends TestCase
         $response->assertSessionHasErrors('category');
     }
 
-    public function test_store_rejects_a_duplicate_one_time_item_name()
+    public function test_store_requires_a_schedule()
     {
         $user = User::factory()->create();
-        DebtItem::factory()->create([
-            'user_id' => $user->id,
-            'schedule_id' => null,
-            'name' => 'Loan from Dad',
-        ]);
 
         $response = $this->actingAs($user)->post(route('debts.store'), [
             'category' => 'personal',
-            'name' => 'Loan from Dad',
+            'name' => 'No schedule loan',
             'amount_borrowed' => 1000,
             'total_repayment_amount' => 1000,
             'monthly_repayment_amount' => 100,
             'tenure_months' => 10,
         ]);
 
-        $response->assertSessionHasErrors('name');
-        $this->assertSame(1, DebtItem::where('name', 'Loan from Dad')->count());
+        $response->assertSessionHasErrors('schedule');
+        $this->assertDatabaseMissing('debt_items', ['name' => 'No schedule loan']);
     }
 
     public function test_update_changes_the_items_fields()
     {
         $user = User::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true]);
         $item = DebtItem::factory()->create([
             'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
             'category' => LoanCategory::Personal,
             'amount_borrowed' => 100000,
             'total_repayment_amount' => 100000,
@@ -180,6 +178,7 @@ class DebtsControllerTest extends TestCase
             'total_repayment_amount' => 120000,
             'monthly_repayment_amount' => $item->monthly_repayment_amount,
             'tenure_months' => $item->tenure_months,
+            'schedule' => ['recurrence' => 'monthly', 'start_date' => '2026-03-01'],
         ]);
 
         $item->refresh();
@@ -188,7 +187,7 @@ class DebtsControllerTest extends TestCase
         $this->assertSame(LoanCategory::CreditCard, $item->category);
     }
 
-    public function test_update_without_a_schedule_removes_the_items_existing_schedule()
+    public function test_update_requires_a_schedule()
     {
         $user = User::factory()->create();
         $schedule = Schedule::factory()->create(['is_active' => true]);
@@ -197,7 +196,7 @@ class DebtsControllerTest extends TestCase
             'schedule_id' => $schedule->id,
         ]);
 
-        $this->actingAs($user)->put(route('debts.update', $item), [
+        $response = $this->actingAs($user)->put(route('debts.update', $item), [
             'category' => $item->category->value,
             'name' => $item->name,
             'amount_borrowed' => $item->amount_borrowed,
@@ -206,8 +205,37 @@ class DebtsControllerTest extends TestCase
             'tenure_months' => $item->tenure_months,
         ]);
 
-        $this->assertNull($item->fresh()->schedule_id);
-        $this->assertDatabaseMissing('schedules', ['id' => $schedule->id]);
+        $response->assertSessionHasErrors('schedule');
+        $this->assertSame($schedule->id, $item->fresh()->schedule_id);
+        $this->assertDatabaseHas('schedules', ['id' => $schedule->id]);
+    }
+
+    public function test_update_sets_a_specific_months_schedule()
+    {
+        $user = User::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => null, 'start_date' => '2026-01-01']);
+        $item = DebtItem::factory()->create([
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('debts.update', $item), [
+            'category' => $item->category->value,
+            'name' => $item->name,
+            'amount_borrowed' => $item->amount_borrowed,
+            'total_repayment_amount' => $item->total_repayment_amount,
+            'monthly_repayment_amount' => $item->monthly_repayment_amount,
+            'tenure_months' => $item->tenure_months,
+            'schedule' => [
+                'recurrence' => 'specific_months',
+                'start_date' => '2026-02-01',
+                'months' => [2, 8],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertSame(MonthlyRecurrence::SpecificMonths, $schedule->fresh()->recurrence);
+        $this->assertSame([2, 8], $schedule->fresh()->months);
     }
 
     public function test_a_user_cannot_update_another_users_item()

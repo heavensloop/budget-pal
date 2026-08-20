@@ -25,7 +25,7 @@ class StoreDebtItemRequest extends FormRequest
      */
     public function rules(): array
     {
-        $rules = [
+        return [
             'category' => ['required', Rule::enum(LoanCategory::class)],
             'name' => ['required', 'string', 'max:255'],
             'amount_borrowed' => ['required', 'numeric', 'min:0'],
@@ -34,21 +34,14 @@ class StoreDebtItemRequest extends FormRequest
             'tenure_months' => ['required', 'integer', 'min:1'],
             'payments_made' => ['nullable', 'integer', 'min:0', 'lte:tenure_months'],
             'notes' => ['nullable', 'string'],
-            'schedule' => ['nullable', 'array'],
+            'schedule' => ['required', 'array'],
             'schedule.recurrence' => ['nullable', Rule::enum(MonthlyRecurrence::class)],
-            'schedule.start_date' => ['required_with:schedule', 'date'],
+            'schedule.start_date' => ['required', 'date'],
             'schedule.end_date' => ['nullable', 'date', 'after_or_equal:schedule.start_date'],
             'schedule.reminder_days_before' => ['nullable', 'integer', 'between:0,365'],
             'schedule.interval_months' => ['required_if:schedule.recurrence,every_n_months', 'integer', 'between:2,6'],
             'schedule.months' => ['required_if:schedule.recurrence,specific_months', 'array', 'min:1'],
             'schedule.months.*' => ['integer', 'between:1,12', 'distinct'],
         ];
-
-        if (empty($this->input('schedule'))) {
-            $rules['name'][] = Rule::unique('debt_items')
-                ->where(fn ($query) => $query->where('user_id', $this->user()->id)->whereNull('schedule_id'));
-        }
-
-        return $rules;
     }
 }
