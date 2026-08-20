@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import { Banknote, CreditCard, BanknoteArrowDown, Plus } from '@lucide/vue';
+import {
+    Banknote,
+    CreditCard,
+    BanknoteArrowDown,
+    Percent,
+    Plus,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 import DebtsController from '@/actions/App/Http/Controllers/Web/DebtsController';
 import CategoryBarChart from '@/components/CategoryBarChart.vue';
@@ -62,6 +68,10 @@ const totalInterest = computed(() =>
         (sum, item) => sum + (item.totalRepaymentAmount - item.amountBorrowed),
         0,
     ),
+);
+
+const totalMonthlyInterest = computed(() =>
+    page.props.items.reduce((sum, item) => sum + item.interestMonthly, 0),
 );
 
 const debtsCurrencyCode = computed(
@@ -235,6 +245,13 @@ function destroy(item: DebtItem) {
                 :value="formatCurrency(nextPaymentTotal, debtsCurrencyCode)"
                 label="Next Repayment Total"
                 :badge-text="`${itemsAwaitingPayment.length} item(s)`"
+            />
+
+            <StatCard
+                :icon="Percent"
+                :value="formatCurrency(totalMonthlyInterest, debtsCurrencyCode)"
+                label="Monthly Interest"
+                :badge-text="`${page.props.items.length} item(s)`"
             />
 
             <StatCard

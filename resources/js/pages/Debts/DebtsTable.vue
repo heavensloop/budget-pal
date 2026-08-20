@@ -69,6 +69,18 @@ function formatMonthYear(dateString: string): string {
     });
 }
 
+function totalInterestAmount(item: DebtItem): number {
+    return item.totalRepaymentAmount - item.amountBorrowed;
+}
+
+function totalInterestRate(item: DebtItem): number {
+    if (item.amountBorrowed <= 0) {
+        return 0;
+    }
+
+    return (totalInterestAmount(item) / item.amountBorrowed) * 100;
+}
+
 // Debts without a schedule are assumed to repeat monthly by default; we
 // just don't have an anchor date to compute a real next payment date from,
 // so fall back to assuming it's due sometime next month.
@@ -160,7 +172,12 @@ function onArchiveOrRestore(item: DebtItem) {
                                 />
                             </button>
                         </th>
-                        <th class="p-3 text-right font-medium">Interest (%)</th>
+                        <th class="p-3 text-right font-medium">
+                            Monthly Interest
+                        </th>
+                        <th class="p-3 text-right font-medium">
+                            Total Interest
+                        </th>
                         <th class="p-3 font-medium">Next Repayment</th>
                         <th class="p-3 font-medium"></th>
                     </tr>
@@ -204,7 +221,26 @@ function onArchiveOrRestore(item: DebtItem) {
                         </td>
                         <td class="p-3 opacity-70">{{ item.categoryLabel }}</td>
                         <td class="p-3 text-right opacity-70">
-                            {{ item.interestRate.toFixed(1) }}%
+                            {{
+                                formatCurrency(
+                                    item.interestMonthly,
+                                    item.currencyCode,
+                                )
+                            }}
+                            <span class="opacity-60">
+                                ({{ item.interestRate.toFixed(1) }}%)
+                            </span>
+                        </td>
+                        <td class="p-3 text-right opacity-70">
+                            {{
+                                formatCurrency(
+                                    totalInterestAmount(item),
+                                    item.currencyCode,
+                                )
+                            }}
+                            <span class="opacity-60">
+                                ({{ totalInterestRate(item).toFixed(1) }}%)
+                            </span>
                         </td>
                         <td class="p-3">
                             <span class="text-sm">{{
@@ -301,11 +337,30 @@ function onArchiveOrRestore(item: DebtItem) {
                     class="mt-3 flex items-center justify-between gap-2 border-t border-foreground/10 pt-3"
                     @click.stop
                 >
-                    <div class="flex items-center gap-3 text-sm opacity-70">
+                    <div
+                        class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm opacity-70"
+                    >
                         <span>{{ nextPaymentLabel(item) }}</span>
-                        <span
-                            >{{ item.interestRate.toFixed(1) }}% interest</span
-                        >
+                        <span>
+                            {{
+                                formatCurrency(
+                                    item.interestMonthly,
+                                    item.currencyCode,
+                                )
+                            }}
+                            ({{ item.interestRate.toFixed(1) }}%) monthly
+                            interest
+                        </span>
+                        <span>
+                            {{
+                                formatCurrency(
+                                    totalInterestAmount(item),
+                                    item.currencyCode,
+                                )
+                            }}
+                            ({{ totalInterestRate(item).toFixed(1) }}%) total
+                            interest
+                        </span>
                     </div>
                     <div class="flex gap-1">
                         <button
