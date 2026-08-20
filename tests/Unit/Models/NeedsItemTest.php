@@ -160,6 +160,19 @@ class NeedsItemTest extends TestCase
         $this->assertSame('2026-02-28', $nextPaymentDate->toDateString());
     }
 
+    public function test_specific_months_item_ignores_start_dates_month_when_it_is_not_a_selected_month()
+    {
+        // start_date (Aug 25) is later this month, and August isn't a
+        // selected month - the due date should still land on the next
+        // selected month (Oct), not silently jump to Aug 25.
+        $schedule = Schedule::factory()->create(['recurrence' => MonthlyRecurrence::SpecificMonths, 'start_date' => '2026-08-25', 'months' => [1, 4, 7, 10]]);
+        $item = NeedsItem::factory()->create(['schedule_id' => $schedule->id]);
+
+        $nextPaymentDate = $item->nextPaymentDate(CarbonImmutable::create(2026, 8, 20));
+
+        $this->assertSame('2026-10-25', $nextPaymentDate->toDateString());
+    }
+
     // Bounds
 
     public function test_recurring_item_returns_null_once_past_its_end_date()

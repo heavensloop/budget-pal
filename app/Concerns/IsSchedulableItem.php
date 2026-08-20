@@ -92,10 +92,12 @@ trait IsSchedulableItem
      */
     private function nextSpecificMonthsOccurrence(CarbonImmutable $startDate, CarbonImmutable $today, array $months): CarbonImmutable
     {
-        if ($startDate->gt($today)) {
-            return $startDate;
-        }
-
+        // Unlike the other recurrences, the month itself is chosen by
+        // $months rather than $startDate, so there's no "hasn't started
+        // yet" short-circuit here - $startDate only ever supplies the day
+        // of the month, and the search below already finds the earliest
+        // matching occurrence on/after today regardless of where
+        // $startDate itself falls.
         sort($months);
         $day = $startDate->day;
 
