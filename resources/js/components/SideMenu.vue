@@ -10,11 +10,13 @@ import {
     PiggyBank,
     Settings,
     ShoppingBag,
+    Wallet,
 } from '@lucide/vue';
 import BrandMark from '@/components/BrandMark.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import { index as debtsIndex } from '@/routes/debts';
+import { index as incomeIndex } from '@/routes/income';
 import { index as needsIndex } from '@/routes/needs';
 import { edit as editProfile } from '@/routes/profile';
 import type { NavItem } from '@/types';
@@ -31,6 +33,7 @@ type SoonItem = { title: string; icon: NavItem['icon'] };
 
 const planningItems: NavItem[] = [
     { title: 'Dashboard', href: dashboard(), icon: CircleGauge },
+    { title: 'Income', href: incomeIndex(), icon: Wallet },
     { title: 'Needs', href: needsIndex(), icon: ListChecks },
     { title: 'Debts', href: debtsIndex(), icon: CreditCard },
 ];

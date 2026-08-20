@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\DebtsController;
+use App\Http\Controllers\Web\IncomeController;
 use App\Http\Controllers\Web\NeedsController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +10,11 @@ Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::resource('income', IncomeController::class)
+        ->except(['create', 'show', 'edit'])
+        ->parameter('income', 'income_item');
+    Route::patch('income/{income_item}/status', [IncomeController::class, 'updateStatus'])->name('income.status');
 
     Route::resource('needs', NeedsController::class)
         ->except(['create', 'show', 'edit'])
