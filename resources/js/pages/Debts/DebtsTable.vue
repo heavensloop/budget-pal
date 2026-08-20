@@ -4,12 +4,20 @@ import {
     ArchiveRestore,
     Banknote,
     ChevronDown,
+    EllipsisVertical,
     Pencil,
     Trash2,
 } from '@lucide/vue';
 import { reactive } from 'vue';
 import type { ScheduleValue } from '@/components/ScheduleField.vue';
 import SortButton from '@/components/SortButton.vue';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useCurrency } from '@/composables/useCurrency';
 
 export type DebtItem = {
@@ -158,7 +166,6 @@ function onArchiveOrRestore(item: DebtItem) {
                         <th class="p-3 text-right font-medium">
                             Total Interest
                         </th>
-                        <th class="p-3 font-medium">Next Repayment</th>
                         <th class="p-3 font-medium"></th>
                     </tr>
                 </thead>
@@ -178,10 +185,18 @@ function onArchiveOrRestore(item: DebtItem) {
                             </span>
                         </td>
                         <td class="p-3 text-right">
+                            {{
+                                formatCurrency(
+                                    item.amountBorrowed,
+                                    item.currencyCode,
+                                )
+                            }}
+                        </td>
+                        <td class="p-3 text-right">
                             <div>
                                 {{
                                     formatCurrency(
-                                        item.amountBorrowed,
+                                        item.totalRepaymentAmount,
                                         item.currencyCode,
                                     )
                                 }}
@@ -196,102 +211,119 @@ function onArchiveOrRestore(item: DebtItem) {
                                             item.currencyCode,
                                         )
                                     }}
-                                    /
-                                    {{
-                                        formatCurrency(
-                                            item.totalRepaymentAmount,
-                                            item.currencyCode,
-                                        )
-                                    }}
-                                    left
+                                    remaining
                                 </span>
                             </div>
                         </td>
                         <td class="p-3 text-right">
-                            {{
-                                formatCurrency(
-                                    item.totalRepaymentAmount,
-                                    item.currencyCode,
-                                )
-                            }}
-                        </td>
-                        <td class="p-3 text-right">
-                            {{
-                                formatCurrency(
-                                    item.monthlyRepaymentAmount,
-                                    item.currencyCode,
-                                )
-                            }}
+                            <div>
+                                {{
+                                    formatCurrency(
+                                        item.monthlyRepaymentAmount,
+                                        item.currencyCode,
+                                    )
+                                }}
+                            </div>
+                            <div class="mt-1 flex justify-end">
+                                <span
+                                    class="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-normal text-primary"
+                                >
+                                    {{ nextPaymentLabel(item) }}
+                                </span>
+                            </div>
                         </td>
                         <td class="p-3 opacity-70">{{ item.categoryLabel }}</td>
                         <td class="p-3 text-right opacity-70">
-                            {{
-                                formatCurrency(
-                                    item.interestMonthly,
-                                    item.currencyCode,
-                                )
-                            }}
-                            <span class="opacity-60">
-                                ({{ item.interestRate.toFixed(1) }}%)
-                            </span>
+                            <div>
+                                {{
+                                    formatCurrency(
+                                        item.interestMonthly,
+                                        item.currencyCode,
+                                    )
+                                }}
+                            </div>
+                            <div class="mt-1 flex justify-end">
+                                <span
+                                    class="inline-block rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-normal opacity-70"
+                                >
+                                    {{ item.interestRate.toFixed(1) }}%
+                                </span>
+                            </div>
                         </td>
                         <td class="p-3 text-right opacity-70">
-                            {{
-                                formatCurrency(
-                                    totalInterestAmount(item),
-                                    item.currencyCode,
-                                )
-                            }}
-                            <span class="opacity-60">
-                                ({{ totalInterestRate(item).toFixed(1) }}%)
-                            </span>
+                            <div>
+                                {{
+                                    formatCurrency(
+                                        totalInterestAmount(item),
+                                        item.currencyCode,
+                                    )
+                                }}
+                            </div>
+                            <div class="mt-1 flex justify-end">
+                                <span
+                                    class="inline-block rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-normal opacity-70"
+                                >
+                                    {{ totalInterestRate(item).toFixed(1) }}%
+                                </span>
+                            </div>
                         </td>
                         <td class="p-3">
-                            <span class="text-sm">{{
-                                nextPaymentLabel(item)
-                            }}</span>
-                        </td>
-                        <td class="p-3">
-                            <div class="flex justify-end gap-1">
-                                <button
-                                    type="button"
-                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-30"
-                                    title="Record Payment"
-                                    :disabled="!item.canRecordPayment"
-                                    @click="emit('recordPayment', item)"
-                                >
-                                    <Banknote class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    type="button"
-                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
-                                    @click="emit('edit', item)"
-                                >
-                                    <Pencil class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    type="button"
-                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
-                                    :title="
-                                        item.status === 'archived'
-                                            ? 'Restore'
-                                            : 'Archive'
-                                    "
-                                    @click="onArchiveOrRestore(item)"
-                                >
-                                    <ArchiveRestore
-                                        v-if="item.status === 'archived'"
-                                        class="size-4 opacity-60"
-                                    />
-                                    <Archive v-else class="size-4 opacity-60" />
-                                </button>
-                                <button
-                                    type="button"
-                                    class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
-                                    @click="emit('destroy', item)"
-                                >
-                                    <Trash2 class="size-4 text-danger" />
-                                </button>
+                            <div class="flex justify-end">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger as-child>
+                                        <button
+                                            type="button"
+                                            class="cursor-pointer rounded-lg p-1.5 hover:bg-foreground/5"
+                                            title="Actions"
+                                        >
+                                            <EllipsisVertical
+                                                class="size-4 opacity-60"
+                                            />
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            :disabled="!item.canRecordPayment"
+                                            @click="
+                                                item.canRecordPayment &&
+                                                emit('recordPayment', item)
+                                            "
+                                        >
+                                            <Banknote class="size-4" />
+                                            Record Payment
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            @click="emit('edit', item)"
+                                        >
+                                            <Pencil class="size-4" />
+                                            Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            @click="onArchiveOrRestore(item)"
+                                        >
+                                            <ArchiveRestore
+                                                v-if="
+                                                    item.status === 'archived'
+                                                "
+                                                class="size-4"
+                                            />
+                                            <Archive v-else class="size-4" />
+                                            {{
+                                                item.status === 'archived'
+                                                    ? 'Restore'
+                                                    : 'Archive'
+                                            }}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            variant="destructive"
+                                            @click="emit('destroy', item)"
+                                        >
+                                            <Trash2 class="size-4" />
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </td>
                     </tr>

@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { DOMWrapper, mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import DebtsTable from './DebtsTable.vue';
 import type { DebtItem } from './DebtsTable.vue';
@@ -43,7 +43,28 @@ function mountTable(items: DebtItem[]) {
             sort: 'name',
             direction: 'asc',
         },
+        attachTo: document.body,
     });
+}
+
+// The row actions menu renders through a Teleport to <body>, so its items
+// live outside the wrapper's own DOM subtree and have to be queried there.
+async function openRowActions(wrapper: ReturnType<typeof mountTable>) {
+    await wrapper.get('table tbody button[title="Actions"]').trigger('click');
+
+    return new DOMWrapper(document.body);
+}
+
+function findMenuItem(menu: DOMWrapper<Element>, label: string) {
+    const item = menu
+        .findAll('[role="menuitem"]')
+        .find((candidate) => candidate.text().includes(label));
+
+    if (!item) {
+        throw new Error(`Menu item "${label}" not found`);
+    }
+
+    return item;
 }
 
 describe('DebtsTable', () => {
@@ -117,15 +138,23 @@ describe('DebtsTable', () => {
         expect(wrapper.emitted('sort')).toEqual([['name']]);
     });
 
-    it('emits recordPayment, edit, archive, and destroy from the table row actions', async () => {
+    it('emits recordPayment, edit, archive, and destroy from the row actions menu', async () => {
         const item = makeItem({ status: 'pending', canRecordPayment: true });
         const wrapper = mountTable([item]);
 
-        const buttons = wrapper.get('table tbody').findAll('button');
-        await buttons[0].trigger('click'); // record payment
-        await buttons[1].trigger('click'); // edit
-        await buttons[2].trigger('click'); // archive
-        await buttons[3].trigger('click'); // destroy
+        await findMenuItem(
+            await openRowActions(wrapper),
+            'Record Payment',
+        ).trigger('click');
+        await findMenuItem(await openRowActions(wrapper), 'Edit').trigger(
+            'click',
+        );
+        await findMenuItem(await openRowActions(wrapper), 'Archive').trigger(
+            'click',
+        );
+        await findMenuItem(await openRowActions(wrapper), 'Delete').trigger(
+            'click',
+        );
 
         expect(wrapper.emitted('recordPayment')?.[0]).toEqual([item]);
         expect(wrapper.emitted('edit')?.[0]).toEqual([item]);
@@ -137,24 +166,26 @@ describe('DebtsTable', () => {
         const item = makeItem({ status: 'archived' });
         const wrapper = mountTable([item]);
 
-        const buttons = wrapper.get('table tbody').findAll('button');
-        await buttons[2].trigger('click'); // archive/restore toggle button
+        await findMenuItem(await openRowActions(wrapper), 'Restore').trigger(
+            'click',
+        );
 
         expect(wrapper.emitted('restore')?.[0]).toEqual([item]);
         expect(wrapper.emitted('archive')).toBeUndefined();
     });
 
-    it('disables the record payment button when canRecordPayment is false', async () => {
+    it('disables the record payment menu item when canRecordPayment is false', async () => {
         const item = makeItem({ canRecordPayment: false });
         const wrapper = mountTable([item]);
 
-        const recordPaymentButton = wrapper.get(
-            'table tbody button[title="Record Payment"]',
+        const recordPaymentItem = findMenuItem(
+            await openRowActions(wrapper),
+            'Record Payment',
         );
 
-        expect(recordPaymentButton.attributes('disabled')).toBeDefined();
+        expect(recordPaymentItem.attributes('data-disabled')).toBeDefined();
 
-        await recordPaymentButton.trigger('click');
+        await recordPaymentItem.trigger('click');
 
         expect(wrapper.emitted('recordPayment')).toBeUndefined();
     });
