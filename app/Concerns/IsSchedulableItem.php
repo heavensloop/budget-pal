@@ -44,6 +44,8 @@ trait IsSchedulableItem
             MonthlyRecurrence::Monthly => $this->nextMonthlyOccurrence($schedule->start_date, $today),
             MonthlyRecurrence::EveryNMonths => $this->nextEveryNMonthsOccurrence($schedule->start_date, $today, $schedule->interval_months),
             MonthlyRecurrence::SpecificMonths => $this->nextSpecificMonthsOccurrence($schedule->start_date, $today, $schedule->months ?? []),
+            MonthlyRecurrence::Quarterly => $this->nextEveryNMonthsOccurrence($schedule->start_date, $today, 3),
+            MonthlyRecurrence::Yearly => $this->nextEveryNMonthsOccurrence($schedule->start_date, $today, 12),
         };
 
         if ($schedule->end_date && $dueDate->gt($schedule->end_date)) {

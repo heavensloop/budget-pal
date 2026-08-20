@@ -44,7 +44,11 @@ class IncomeController extends Controller
             'sort' => $sort,
             'direction' => $direction->value,
             'showArchived' => $showArchived,
-            'recurrenceOptions' => MonthlyRecurrence::options(),
+            'recurrenceOptions' => MonthlyRecurrence::options([
+                MonthlyRecurrence::Monthly,
+                MonthlyRecurrence::EveryNMonths,
+                MonthlyRecurrence::SpecificMonths,
+            ]),
         ]);
     }
 
