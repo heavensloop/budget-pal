@@ -4,6 +4,7 @@ use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\DebtsController;
 use App\Http\Controllers\Web\IncomeController;
 use App\Http\Controllers\Web\NeedsController;
+use App\Http\Controllers\Web\SavingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -26,6 +27,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->parameter('debts', 'debt');
     Route::patch('debts/{debt}/status', [DebtsController::class, 'updateStatus'])->name('debts.status');
     Route::patch('debts/{debt}/payment', [DebtsController::class, 'recordPayment'])->name('debts.payment');
+
+    Route::resource('savings', SavingsController::class)
+        ->except(['create', 'show', 'edit'])
+        ->parameter('savings', 'saving');
+    Route::patch('savings/{saving}/status', [SavingsController::class, 'updateStatus'])->name('savings.status');
+    Route::patch('savings/{saving}/contribution', [SavingsController::class, 'recordContribution'])->name('savings.contribution');
 });
 
 require __DIR__.'/settings.php';
