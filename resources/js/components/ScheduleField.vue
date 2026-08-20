@@ -71,7 +71,13 @@ const recurrenceChoices = computed<
 // Rendered inside a <Form> keyed on the item being edited, so a fresh
 // instance (and fresh local state) is guaranteed per edit session - no
 // need to watch props.modelValue for external changes.
-const isEditing = ref(false);
+//
+// A required schedule with no start date yet isn't really "set" - start
+// in the editing view instead of the summary so it can't be mistaken for
+// an already-configured schedule (which previously let users pick a
+// recurrence, save, and have the whole schedule silently dropped because
+// every hidden input is gated on a start date being present).
+const isEditing = ref(props.required && !props.modelValue?.startDate);
 
 const local = reactive<{
     recurrence: RecurrenceChoice;
@@ -151,6 +157,8 @@ function toggleMonth(month: number) {
 
 const doneAttempted = ref(false);
 
+const startDateMissing = computed(() => !local.startDate);
+
 const intervalMonthsMissing = computed(
     () => local.recurrence === 'every_n_months' && !local.intervalMonths,
 );
@@ -160,7 +168,11 @@ const monthsMissing = computed(
 );
 
 function finishEditing() {
-    if (intervalMonthsMissing.value || monthsMissing.value) {
+    if (
+        startDateMissing.value ||
+        intervalMonthsMissing.value ||
+        monthsMissing.value
+    ) {
         doneAttempted.value = true;
 
         return;
@@ -389,12 +401,19 @@ function summaryText(value: {
                     :id="`${name}-start-date`"
                     v-model="local.startDate"
                     type="date"
+                    :required="required"
                 />
                 <p
                     v-if="errors[`${name}.start_date`]"
                     class="text-xs text-danger"
                 >
                     {{ errors[`${name}.start_date`] }}
+                </p>
+                <p
+                    v-else-if="doneAttempted && startDateMissing"
+                    class="text-xs text-danger"
+                >
+                    Select a date.
                 </p>
             </div>
 

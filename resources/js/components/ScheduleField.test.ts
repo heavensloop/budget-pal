@@ -320,7 +320,7 @@ describe('ScheduleField', () => {
         expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null]);
     });
 
-    it('shows the recurrence summary when a recurrence is set but no date is chosen yet', () => {
+    it('opens straight into editing (not a misleading summary) when a required schedule has no date yet', () => {
         const wrapper = mountField(
             {
                 recurrence: 'monthly',
@@ -333,29 +333,15 @@ describe('ScheduleField', () => {
             true,
         );
 
-        expect(wrapper.text()).toContain('Repeats monthly');
-        expect(wrapper.text()).not.toContain('Not scheduled');
-        expect(wrapper.text()).not.toContain('Set Schedule');
+        // A recurrence with no date isn't really a configured schedule -
+        // showing "Repeats monthly" as a collapsed summary here previously
+        // let users pick a recurrence, save, and have it silently dropped
+        // since nothing renders without a start date.
+        expect(wrapper.find('[role="radio"]').exists()).toBe(true);
+        expect(wrapper.get('#schedule-start-date')).toBeTruthy();
     });
 
-    it('shows an every-n-months summary without a date reference when no date is chosen yet', () => {
-        const wrapper = mountField(
-            {
-                recurrence: 'every_n_months',
-                startDate: null,
-                endDate: null,
-                reminderDaysBefore: null,
-                intervalMonths: 3,
-                months: null,
-            },
-            true,
-        );
-
-        expect(wrapper.text()).toContain('Repeats every 3 months');
-        expect(wrapper.text()).not.toContain('from');
-    });
-
-    it('excludes "Does not repeat" when required', async () => {
+    it('excludes "Does not repeat" when required', () => {
         const wrapper = mountField(
             {
                 recurrence: 'monthly',
@@ -367,14 +353,12 @@ describe('ScheduleField', () => {
             },
             true,
         );
-
-        await wrapper.get('button').trigger('click');
 
         expect(wrapper.text()).not.toContain('Does not repeat');
         expect(wrapper.text()).toContain('Monthly');
     });
 
-    it('hides "Clear schedule" when required', async () => {
+    it('hides "Clear schedule" when required', () => {
         const wrapper = mountField(
             {
                 recurrence: 'monthly',
@@ -387,22 +371,63 @@ describe('ScheduleField', () => {
             true,
         );
 
-        await wrapper.get('button').trigger('click');
-
         expect(wrapper.find('button.text-danger').exists()).toBe(false);
     });
 
-    it('allows leaving the start date blank for a recurring schedule', async () => {
+    it('requires a start date for a required schedule', () => {
         const wrapper = mountField(null, true);
-        await wrapper.get('button').trigger('click');
-
-        await selectRecurrenceOption(wrapper, 'Every few months');
-        await wrapper.get('#schedule-interval-months').setValue('3');
 
         expect(
             wrapper
                 .get<HTMLInputElement>('#schedule-start-date')
                 .attributes('required'),
-        ).toBeUndefined();
+        ).toBeDefined();
+    });
+
+    it('blocks "Done" when a required schedule is missing its start date', async () => {
+        const wrapper = mountField(null, true);
+
+        await selectRecurrenceOption(wrapper, 'On specific months');
+        const monthButton = wrapper
+            .findAll('button')
+            .find((button) => button.text() === 'Jan');
+        await monthButton?.trigger('click');
+
+        const doneButton = wrapper
+            .findAll('button')
+            .find((button) => button.text() === 'Done');
+        await doneButton?.trigger('click');
+
+        expect(wrapper.text()).toContain('Select a date.');
+        expect(wrapper.find('#schedule-start-date').exists()).toBe(true);
+    });
+
+    it('saves a specific-months schedule once the start date is filled in', async () => {
+        const wrapper = mountField(null, true);
+
+        await selectRecurrenceOption(wrapper, 'On specific months');
+        const monthButton = wrapper
+            .findAll('button')
+            .find((button) => button.text() === 'Jan');
+        await monthButton?.trigger('click');
+        await wrapper.get('#schedule-start-date').setValue('2026-01-15');
+
+        const doneButton = wrapper
+            .findAll('button')
+            .find((button) => button.text() === 'Done');
+        await doneButton?.trigger('click');
+
+        expect(wrapper.text()).not.toContain('Select a date.');
+        expect(wrapper.text()).toContain('Repeats every Jan');
+        expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+            {
+                recurrence: 'specific_months',
+                startDate: '2026-01-15',
+                endDate: null,
+                reminderDaysBefore: null,
+                intervalMonths: null,
+                months: [1],
+            },
+        ]);
     });
 });
