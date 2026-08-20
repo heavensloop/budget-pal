@@ -9,9 +9,15 @@ function makeItem(overrides: Partial<DebtItem> = {}): DebtItem {
         category: 'personal',
         categoryLabel: 'Personal Loan',
         name: 'Car loan',
-        principal: 500000,
+        amountBorrowed: 500000,
+        totalRepaymentAmount: 600000,
+        monthlyRepaymentAmount: 25000,
+        tenureMonths: 24,
+        paymentsMade: 6,
         balance: 350000,
-        amount: 25000,
+        remainingTenure: 18,
+        interestMonthly: 4166.67,
+        interestRate: 0.83,
         currencyCode: 'NGN',
         status: 'pending',
         lastPaymentDate: null,
@@ -54,17 +60,17 @@ describe('DebtsTable', () => {
                 id: 1,
                 name: 'Car loan',
                 categoryLabel: 'Auto Loan',
-                amount: 25000,
+                monthlyRepaymentAmount: 25000,
                 balance: 350000,
-                principal: 500000,
+                totalRepaymentAmount: 600000,
             }),
             makeItem({
                 id: 2,
                 name: 'Credit card',
                 categoryLabel: 'Credit Card',
-                amount: 10000,
+                monthlyRepaymentAmount: 10000,
                 balance: 40000,
-                principal: 100000,
+                totalRepaymentAmount: 100000,
             }),
         ]);
 
@@ -74,7 +80,7 @@ describe('DebtsTable', () => {
         expect(table.text()).toContain('Auto Loan');
         expect(table.text()).toContain('₦25,000');
         expect(table.text()).toContain('₦350,000');
-        expect(table.text()).toContain('₦500,000');
+        expect(table.text()).toContain('₦600,000');
         expect(table.text()).toContain('Credit card');
         expect(table.text()).toContain('Credit Card');
     });

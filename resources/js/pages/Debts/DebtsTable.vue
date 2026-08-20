@@ -18,9 +18,15 @@ export type DebtItem = {
     category: string;
     categoryLabel: string;
     name: string;
-    principal: number;
+    amountBorrowed: number;
+    totalRepaymentAmount: number;
+    monthlyRepaymentAmount: number;
+    tenureMonths: number;
+    paymentsMade: number;
     balance: number;
-    amount: number;
+    remainingTenure: number;
+    interestMonthly: number;
+    interestRate: number;
     currencyCode: string;
     status: 'pending' | 'archived';
     lastPaymentDate: string | null;
@@ -154,6 +160,7 @@ function onArchiveOrRestore(item: DebtItem) {
                                 />
                             </button>
                         </th>
+                        <th class="p-3 text-right font-medium">Interest (%)</th>
                         <th class="p-3 font-medium">Next Repayment</th>
                         <th class="p-3 font-medium"></th>
                     </tr>
@@ -174,7 +181,12 @@ function onArchiveOrRestore(item: DebtItem) {
                             </span>
                         </td>
                         <td class="p-3 text-right">
-                            {{ formatCurrency(item.amount, item.currencyCode) }}
+                            {{
+                                formatCurrency(
+                                    item.monthlyRepaymentAmount,
+                                    item.currencyCode,
+                                )
+                            }}
                         </td>
                         <td class="p-3 text-right">
                             {{
@@ -184,13 +196,16 @@ function onArchiveOrRestore(item: DebtItem) {
                                 /
                                 {{
                                     formatCurrency(
-                                        item.principal,
+                                        item.totalRepaymentAmount,
                                         item.currencyCode,
                                     )
                                 }}
                             </span>
                         </td>
                         <td class="p-3 opacity-70">{{ item.categoryLabel }}</td>
+                        <td class="p-3 text-right opacity-70">
+                            {{ item.interestRate.toFixed(1) }}%
+                        </td>
                         <td class="p-3">
                             <span class="text-sm">{{
                                 nextPaymentLabel(item)
@@ -286,9 +301,12 @@ function onArchiveOrRestore(item: DebtItem) {
                     class="mt-3 flex items-center justify-between gap-2 border-t border-foreground/10 pt-3"
                     @click.stop
                 >
-                    <span class="text-sm opacity-70">{{
-                        nextPaymentLabel(item)
-                    }}</span>
+                    <div class="flex items-center gap-3 text-sm opacity-70">
+                        <span>{{ nextPaymentLabel(item) }}</span>
+                        <span
+                            >{{ item.interestRate.toFixed(1) }}% interest</span
+                        >
+                    </div>
                     <div class="flex gap-1">
                         <button
                             type="button"

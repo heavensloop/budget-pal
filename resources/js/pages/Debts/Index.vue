@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, router, usePage } from '@inertiajs/vue3';
-import { Banknote, CreditCard, Plus } from '@lucide/vue';
+import { Banknote, CreditCard, BanknoteArrowDown, Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import DebtsController from '@/actions/App/Http/Controllers/Web/DebtsController';
 import CategoryBarChart from '@/components/CategoryBarChart.vue';
@@ -51,7 +51,17 @@ const itemsAwaitingPayment = computed(() =>
 );
 
 const nextPaymentTotal = computed(() =>
-    itemsAwaitingPayment.value.reduce((sum, item) => sum + item.amount, 0),
+    itemsAwaitingPayment.value.reduce(
+        (sum, item) => sum + item.monthlyRepaymentAmount,
+        0,
+    ),
+);
+
+const totalInterest = computed(() =>
+    page.props.items.reduce(
+        (sum, item) => sum + (item.totalRepaymentAmount - item.amountBorrowed),
+        0,
+    ),
 );
 
 const debtsCurrencyCode = computed(
@@ -227,6 +237,13 @@ function destroy(item: DebtItem) {
                 :badge-text="`${itemsAwaitingPayment.length} item(s)`"
             />
 
+            <StatCard
+                :icon="BanknoteArrowDown"
+                :value="formatCurrency(totalInterest, debtsCurrencyCode)"
+                label="Total Interest"
+                :badge-text="`${page.props.items.length} item(s)`"
+            />
+
             <div class="box p-6">
                 <h2 class="text-lg font-medium">Balance by category</h2>
                 <div class="mt-4">
@@ -292,50 +309,104 @@ function destroy(item: DebtItem) {
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="grid gap-2">
-                        <Label for="principal">Principal</Label>
+                        <Label for="amount_borrowed">
+                            Amount Borrowed (without interest)
+                        </Label>
                         <Input
-                            id="principal"
-                            name="principal"
+                            id="amount_borrowed"
+                            name="amount_borrowed"
                             type="number"
                             step="0.01"
                             min="0"
-                            :default-value="editingItem?.principal"
+                            :default-value="editingItem?.amountBorrowed"
                             required
                         />
-                        <p v-if="errors.principal" class="text-xs text-danger">
-                            {{ errors.principal }}
+                        <p
+                            v-if="errors.amount_borrowed"
+                            class="text-xs text-danger"
+                        >
+                            {{ errors.amount_borrowed }}
                         </p>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="balance">Current balance</Label>
+                        <Label for="total_repayment_amount">
+                            Total Repayment Amount
+                        </Label>
                         <Input
-                            id="balance"
-                            name="balance"
+                            id="total_repayment_amount"
+                            name="total_repayment_amount"
                             type="number"
                             step="0.01"
                             min="0"
-                            :default-value="editingItem?.balance"
+                            :default-value="editingItem?.totalRepaymentAmount"
+                            required
                         />
-                        <p v-if="errors.balance" class="text-xs text-danger">
-                            {{ errors.balance }}
+                        <p
+                            v-if="errors.total_repayment_amount"
+                            class="text-xs text-danger"
+                        >
+                            {{ errors.total_repayment_amount }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="grid gap-2">
+                        <Label for="monthly_repayment_amount">
+                            Monthly Repayment Amount
+                        </Label>
+                        <Input
+                            id="monthly_repayment_amount"
+                            name="monthly_repayment_amount"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            :default-value="editingItem?.monthlyRepaymentAmount"
+                            required
+                        />
+                        <p
+                            v-if="errors.monthly_repayment_amount"
+                            class="text-xs text-danger"
+                        >
+                            {{ errors.monthly_repayment_amount }}
+                        </p>
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="tenure_months">Tenure (months)</Label>
+                        <Input
+                            id="tenure_months"
+                            name="tenure_months"
+                            type="number"
+                            step="1"
+                            min="1"
+                            :default-value="editingItem?.tenureMonths"
+                            required
+                        />
+                        <p
+                            v-if="errors.tenure_months"
+                            class="text-xs text-danger"
+                        >
+                            {{ errors.tenure_months }}
                         </p>
                     </div>
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="amount">Repayment Amount</Label>
+                    <Label for="payments_made">
+                        Number of Payments Made (optional)
+                    </Label>
                     <Input
-                        id="amount"
-                        name="amount"
+                        id="payments_made"
+                        name="payments_made"
                         type="number"
-                        step="0.01"
+                        step="1"
                         min="0"
-                        :default-value="editingItem?.amount"
-                        required
+                        :default-value="editingItem?.paymentsMade"
                     />
-                    <p v-if="errors.amount" class="text-xs text-danger">
-                        {{ errors.amount }}
+                    <p v-if="errors.payments_made" class="text-xs text-danger">
+                        {{ errors.payments_made }}
                     </p>
                 </div>
 
