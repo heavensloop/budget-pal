@@ -3,6 +3,7 @@
 namespace App\Actions\Budget;
 
 use App\Enums\WantItemStatus;
+use App\Models\Schedule;
 use App\Models\User;
 use App\Models\WantItem;
 
@@ -17,8 +18,20 @@ class CreateWantItem
             ->where('user_id', $user->id)
             ->max('position');
 
+        $schedule = null;
+
+        if (! empty($data['schedule'])) {
+            $schedule = Schedule::create([
+                'is_active' => true,
+                'recurrence' => null,
+                'start_date' => $data['schedule']['start_date'],
+                'reminder_days_before' => $data['schedule']['reminder_days_before'] ?? null,
+            ]);
+        }
+
         return WantItem::create([
             'user_id' => $user->id,
+            'schedule_id' => $schedule?->id,
             'name' => $data['name'],
             'category' => $data['category'],
             'amount' => $data['amount'],

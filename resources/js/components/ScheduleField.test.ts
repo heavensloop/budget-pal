@@ -475,3 +475,66 @@ describe('ScheduleField', () => {
         expect(wrapper.text()).toContain('Select a date.');
     });
 });
+
+// Wants is the first (and so far only) consumer of an optional,
+// no-recurring-options schedule - a single "Does not repeat" choice with
+// month/year granularity, since a Want is a one-off purchase target, not a
+// recurring bill.
+describe('ScheduleField with no recurring options (Wants-style usage)', () => {
+    function mountOneTimeField(modelValue: ScheduleValue = null) {
+        return mount(ScheduleField, {
+            props: {
+                modelValue,
+                recurrenceOptions: [],
+                required: false,
+                dateGranularity: 'month',
+                oneTimeLabel: 'Planned for',
+            },
+        });
+    }
+
+    it('skips the radio group when "Does not repeat" is the only choice', async () => {
+        const wrapper = mountOneTimeField(null);
+
+        await wrapper.get('button').trigger('click');
+
+        expect(wrapper.find('[role="radio"]').exists()).toBe(false);
+        expect(wrapper.text()).not.toContain('Does not repeat');
+    });
+
+    it('renders a month input instead of a full date picker', async () => {
+        const wrapper = mountOneTimeField(null);
+
+        await wrapper.get('button').trigger('click');
+
+        const input = wrapper.get<HTMLInputElement>('#schedule-start-date');
+        expect(input.attributes('type')).toBe('month');
+        expect(wrapper.text()).toContain('Planned for');
+
+        await input.setValue('2026-12');
+
+        expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+            {
+                recurrence: null,
+                startDate: '2026-12-01',
+                endDate: null,
+                reminderDaysBefore: null,
+                intervalMonths: null,
+                months: null,
+            },
+        ]);
+    });
+
+    it('shows the custom one-time label in the collapsed summary', () => {
+        const wrapper = mountOneTimeField({
+            recurrence: null,
+            startDate: '2026-12-01',
+            endDate: null,
+            reminderDaysBefore: null,
+            intervalMonths: null,
+            months: null,
+        });
+
+        expect(wrapper.text()).toContain('Planned for Dec 2026');
+    });
+});

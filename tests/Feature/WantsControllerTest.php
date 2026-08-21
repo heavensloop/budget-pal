@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\WantCategory;
 use App\Enums\WantItemStatus;
+use App\Models\Schedule;
 use App\Models\User;
 use App\Models\WantItem;
 use Carbon\CarbonImmutable;
@@ -70,6 +71,25 @@ class WantsControllerTest extends TestCase
         $this->assertSame('500000.00', $item->amount);
         $this->assertSame(WantItemStatus::PLANNED, $item->status);
         $this->assertSame('Prefer the Pro model', $item->notes);
+        $this->assertNull($item->schedule_id);
+    }
+
+    public function test_store_creates_a_want_with_a_target_month()
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('wants.store'), [
+            'name' => 'Winter boots',
+            'category' => 'clothing',
+            'amount' => 45000,
+            'schedule' => ['start_date' => '2026-12-01'],
+        ]);
+
+        $item = WantItem::where('name', 'Winter boots')->firstOrFail();
+
+        $this->assertNotNull($item->schedule_id);
+        $this->assertNull($item->schedule->recurrence);
+        $this->assertSame('2026-12-01', $item->schedule->start_date->toDateString());
     }
 
     public function test_store_appends_to_the_end_of_the_priority_list()
@@ -130,6 +150,61 @@ class WantsControllerTest extends TestCase
 
         $this->assertSame('75000.00', $item->amount);
         $this->assertSame(WantCategory::CLOTHING, $item->category);
+    }
+
+    public function test_update_sets_a_target_month_on_a_want_that_had_none()
+    {
+        $user = User::factory()->create();
+        $item = WantItem::factory()->create(['user_id' => $user->id, 'schedule_id' => null]);
+
+        $this->actingAs($user)->put(route('wants.update', $item), [
+            'name' => $item->name,
+            'category' => $item->category->value,
+            'amount' => $item->amount,
+            'schedule' => ['start_date' => '2026-07-01'],
+        ]);
+
+        $item->refresh();
+
+        $this->assertNotNull($item->schedule_id);
+        $this->assertSame('2026-07-01', $item->schedule->start_date->toDateString());
+    }
+
+    public function test_update_changes_an_existing_target_month_in_place()
+    {
+        $user = User::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => null, 'start_date' => '2026-07-01']);
+        $item = WantItem::factory()->create(['user_id' => $user->id, 'schedule_id' => $schedule->id]);
+
+        $this->actingAs($user)->put(route('wants.update', $item), [
+            'name' => $item->name,
+            'category' => $item->category->value,
+            'amount' => $item->amount,
+            'schedule' => ['start_date' => '2026-08-01'],
+        ]);
+
+        $item->refresh();
+
+        $this->assertSame($schedule->id, $item->schedule_id);
+        $this->assertSame('2026-08-01', $item->schedule->start_date->toDateString());
+    }
+
+    public function test_update_clears_the_target_month_when_the_schedule_is_omitted()
+    {
+        $user = User::factory()->create();
+        $schedule = Schedule::factory()->create(['is_active' => true, 'recurrence' => null, 'start_date' => '2026-07-01']);
+        $item = WantItem::factory()->create(['user_id' => $user->id, 'schedule_id' => $schedule->id]);
+
+        $this->actingAs($user)->put(route('wants.update', $item), [
+            'name' => $item->name,
+            'category' => $item->category->value,
+            'amount' => $item->amount,
+        ]);
+
+        $item->refresh();
+
+        $this->assertNull($item->schedule_id);
+        $this->assertDatabaseMissing('schedules', ['id' => $schedule->id]);
     }
 
     public function test_a_user_cannot_update_another_users_item()

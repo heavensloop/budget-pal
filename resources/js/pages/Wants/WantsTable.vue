@@ -11,6 +11,7 @@ import {
     Trash2,
 } from '@lucide/vue';
 import { reactive } from 'vue';
+import type { ScheduleValue } from '@/components/ScheduleField.vue';
 import SortButton from '@/components/SortButton.vue';
 import {
     DropdownMenu,
@@ -34,6 +35,7 @@ export type WantItem = {
     statusLabel: string;
     position: number;
     purchasedAt: string | null;
+    schedule: ScheduleValue;
     notes: string | null;
 };
 
@@ -56,6 +58,13 @@ const emit = defineEmits<{
 }>();
 
 const { formatCurrency } = useCurrency();
+
+function formatMonthYear(dateString: string): string {
+    return new Date(`${dateString}T00:00:00`).toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+    });
+}
 
 const STATUS_STYLES: Record<WantStatus, string> = {
     planned: 'bg-foreground/10 text-foreground/70',
@@ -136,7 +145,16 @@ function onArchiveOrRestore(item: WantItem) {
                         :key="item.id"
                         class="border-b border-foreground/5 last:border-0"
                     >
-                        <td class="w-1/6 p-3">{{ item.name }}</td>
+                        <td class="w-1/6 p-3">
+                            <div>{{ item.name }}</div>
+                            <span
+                                v-if="item.schedule?.startDate"
+                                class="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-normal text-primary"
+                            >
+                                Planned for
+                                {{ formatMonthYear(item.schedule.startDate) }}
+                            </span>
+                        </td>
                         <td class="p-3 opacity-70">{{ item.categoryLabel }}</td>
                         <td class="p-3 text-right">
                             {{ formatCurrency(item.amount, item.currencyCode) }}
@@ -261,6 +279,13 @@ function onArchiveOrRestore(item: WantItem) {
                         <div class="mt-0.5 text-sm opacity-70">
                             {{ item.categoryLabel }}
                         </div>
+                        <span
+                            v-if="item.schedule?.startDate"
+                            class="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-normal text-primary"
+                        >
+                            Planned for
+                            {{ formatMonthYear(item.schedule.startDate) }}
+                        </span>
                     </div>
                     <div class="flex flex-none items-center gap-2">
                         <span class="font-medium">{{

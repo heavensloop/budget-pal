@@ -15,6 +15,7 @@ function makeItem(overrides: Partial<WantItem> = {}): WantItem {
         statusLabel: 'Planned',
         position: 1,
         purchasedAt: null,
+        schedule: null,
         notes: null,
         ...overrides,
     };
@@ -88,6 +89,29 @@ describe('WantsTable', () => {
         const wrapper = mountTable([makeItem({ statusLabel: 'Purchased' })]);
 
         expect(wrapper.get('table').text()).toContain('Purchased');
+    });
+
+    it('shows a "Planned for" badge when a target month is set', () => {
+        const wrapper = mountTable([
+            makeItem({
+                schedule: {
+                    recurrence: null,
+                    startDate: '2026-12-01',
+                    endDate: null,
+                    reminderDaysBefore: null,
+                    intervalMonths: null,
+                    months: null,
+                },
+            }),
+        ]);
+
+        expect(wrapper.get('table').text()).toContain('Planned for Dec 2026');
+    });
+
+    it('does not show a "Planned for" badge when no target month is set', () => {
+        const wrapper = mountTable([makeItem({ schedule: null })]);
+
+        expect(wrapper.get('table').text()).not.toContain('Planned for');
     });
 
     it('emits sort with the clicked column', async () => {

@@ -27,11 +27,17 @@ const props = withDefaults(
         errors?: Record<string, string>;
         recurrenceOptions: RecurrenceOption[];
         required?: boolean;
+        /** Granularity of the one-time (non-repeating) date field. */
+        dateGranularity?: 'day' | 'month';
+        /** Label for the one-time date field and its summary text. */
+        oneTimeLabel?: string;
     }>(),
     {
         name: 'schedule',
         errors: () => ({}),
         required: false,
+        dateGranularity: 'day',
+        oneTimeLabel: 'Due',
     },
 );
 
@@ -126,6 +132,17 @@ const dayOfMonth = ref(
         ? String(parseLocalDate(props.modelValue.startDate).getDate())
         : '1',
 );
+
+// A one-time schedule with month-only granularity (e.g. Wants' purchase
+// target) only cares about which month, not which day - so it's stored as
+// day 1 of that month behind the scenes, same idea as the day-of-month
+// synthesis above but for the month itself.
+const targetMonth = computed<string>({
+    get: () => (local.startDate ? local.startDate.slice(0, 7) : ''),
+    set: (value: string) => {
+        local.startDate = value ? `${value}-01` : '';
+    },
+});
 
 function usesDayOfMonth(recurrence: RecurrenceChoice): boolean {
     return recurrence === 'monthly' || recurrence === 'specific_months';
@@ -284,7 +301,7 @@ function summaryText(value: {
                 .map((month) => MONTH_NAMES[month - 1])
                 .join(', ')}${suffix}`;
         default:
-            return `Due ${formatMonthYear(value.startDate)}`;
+            return `${props.oneTimeLabel} ${formatMonthYear(value.startDate)}`;
     }
 }
 </script>
@@ -381,6 +398,7 @@ function summaryText(value: {
             class="grid gap-3 rounded-lg border border-foreground/10 p-3"
         >
             <RadioGroupRoot
+                v-if="recurrenceChoices.length > 1"
                 v-model="local.recurrence"
                 class="flex flex-col gap-1.5"
             >
@@ -485,9 +503,38 @@ function summaryText(value: {
                 </select>
             </div>
 
+            <div
+                v-else-if="
+                    local.recurrence === 'none' && dateGranularity === 'month'
+                "
+                class="grid gap-2"
+            >
+                <Label :for="`${name}-start-date`">{{ oneTimeLabel }}</Label>
+                <Input
+                    :id="`${name}-start-date`"
+                    v-model="targetMonth"
+                    type="month"
+                    :required="required"
+                />
+                <p
+                    v-if="errors[`${name}.start_date`]"
+                    class="text-xs text-danger"
+                >
+                    {{ errors[`${name}.start_date`] }}
+                </p>
+                <p
+                    v-else-if="doneAttempted && startDateMissing"
+                    class="text-xs text-danger"
+                >
+                    Select a month.
+                </p>
+            </div>
+
             <div v-else class="grid gap-2">
                 <Label :for="`${name}-start-date`">
-                    {{ local.recurrence === 'none' ? 'Due date' : 'Starts on' }}
+                    {{
+                        local.recurrence === 'none' ? oneTimeLabel : 'Starts on'
+                    }}
                 </Label>
                 <Input
                     :id="`${name}-start-date`"

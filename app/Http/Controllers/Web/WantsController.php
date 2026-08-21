@@ -29,6 +29,7 @@ class WantsController extends Controller
 
         $query = WantItem::query()
             ->where('user_id', $request->user()->id)
+            ->with(['schedule'])
             ->sortable($sort, $direction);
 
         if (! $showArchived) {
@@ -40,6 +41,7 @@ class WantsController extends Controller
         return Inertia::render('Wants/Index', [
             'categoryOptions' => WantCategory::options(),
             'statusOptions' => WantItemStatus::options(),
+            'recurrenceOptions' => [],
             'items' => $items,
             'sort' => $sort,
             'direction' => $direction->value,
@@ -112,6 +114,7 @@ class WantsController extends Controller
             'statusLabel' => $item->status->getReadable(),
             'position' => $item->position,
             'purchasedAt' => $item->purchased_at?->toDateString(),
+            'schedule' => $item->schedule?->toFrontendArray(),
             'notes' => $item->notes,
         ];
     }

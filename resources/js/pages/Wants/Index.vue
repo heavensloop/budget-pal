@@ -4,6 +4,11 @@ import { ListTodo, Plus, ShoppingBag, Wallet } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import WantsController from '@/actions/App/Http/Controllers/Web/WantsController';
 import CategoryBarChart from '@/components/CategoryBarChart.vue';
+import ScheduleField from '@/components/ScheduleField.vue';
+import type {
+    RecurrenceOption,
+    ScheduleValue,
+} from '@/components/ScheduleField.vue';
 import StatCard from '@/components/StatCard.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +30,7 @@ type Option = { value: string; label: string };
 const page = usePage<{
     categoryOptions: Option[];
     statusOptions: Option[];
+    recurrenceOptions: RecurrenceOption[];
     items: WantItem[];
     sort: SortColumn;
     direction: 'asc' | 'desc';
@@ -110,14 +116,17 @@ function toggleShowArchived() {
 
 const dialogOpen = ref(false);
 const editingItem = ref<WantItem | null>(null);
+const schedule = ref<ScheduleValue>(null);
 
 function openCreateDialog() {
     editingItem.value = null;
+    schedule.value = null;
     dialogOpen.value = true;
 }
 
 function openEditDialog(item: WantItem) {
     editingItem.value = item;
+    schedule.value = item.schedule ?? null;
     dialogOpen.value = true;
 }
 
@@ -304,6 +313,18 @@ function destroy(item: WantItem) {
                     <p v-if="errors.amount" class="text-xs text-danger">
                         {{ errors.amount }}
                     </p>
+                </div>
+
+                <div class="grid gap-2">
+                    <Label>Schedule (optional)</Label>
+                    <ScheduleField
+                        v-model="schedule"
+                        name="schedule"
+                        :errors="errors"
+                        :recurrence-options="page.props.recurrenceOptions"
+                        date-granularity="month"
+                        one-time-label="Planned for"
+                    />
                 </div>
 
                 <div class="grid gap-2">

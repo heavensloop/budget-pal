@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('want_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('schedule_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
             $table->enum('category', ['electronics', 'clothing', 'entertainment', 'gifts', 'hobbies', 'travel', 'food_and_dining', 'health_and_fitness', 'other']);
             $table->decimal('amount', 14, 2);

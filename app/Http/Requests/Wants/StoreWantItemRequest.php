@@ -29,6 +29,9 @@ class StoreWantItemRequest extends FormRequest
             'category' => ['required', Rule::enum(WantCategory::class)],
             'amount' => ['required', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'schedule' => ['nullable', 'array'],
+            'schedule.start_date' => ['required_with:schedule', 'date'],
+            'schedule.reminder_days_before' => ['nullable', 'integer', 'between:0,365'],
         ];
     }
 }
