@@ -20,6 +20,7 @@ import { index as incomeIndex } from '@/routes/income';
 import { index as needsIndex } from '@/routes/needs';
 import { edit as editProfile } from '@/routes/profile';
 import { index as savingsIndex } from '@/routes/savings';
+import { index as wantsIndex } from '@/routes/wants';
 import type { NavItem } from '@/types';
 
 defineProps<{
@@ -36,6 +37,7 @@ const planningItems: NavItem[] = [
     { title: 'Dashboard', href: dashboard(), icon: CircleGauge },
     { title: 'Income', href: incomeIndex(), icon: Wallet },
     { title: 'Needs', href: needsIndex(), icon: ListChecks },
+    { title: 'Wants', href: wantsIndex(), icon: ShoppingBag },
     { title: 'Debts', href: debtsIndex(), icon: CreditCard },
     {
         title: 'Savings & Investments',
@@ -44,7 +46,7 @@ const planningItems: NavItem[] = [
     },
 ];
 
-const planningSoon: SoonItem[] = [{ title: 'Wants', icon: ShoppingBag }];
+const planningSoon: SoonItem[] = [];
 
 const insightsSoon: SoonItem[] = [
     { title: 'Review & Insights', icon: LineChart },

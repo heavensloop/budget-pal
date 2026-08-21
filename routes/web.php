@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\DebtsController;
 use App\Http\Controllers\Web\IncomeController;
 use App\Http\Controllers\Web\NeedsController;
 use App\Http\Controllers\Web\SavingsController;
+use App\Http\Controllers\Web\WantsController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -33,6 +34,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->parameter('savings', 'saving');
     Route::patch('savings/{saving}/status', [SavingsController::class, 'updateStatus'])->name('savings.status');
     Route::patch('savings/{saving}/contribution', [SavingsController::class, 'recordContribution'])->name('savings.contribution');
+
+    Route::resource('wants', WantsController::class)
+        ->except(['create', 'show', 'edit'])
+        ->parameter('wants', 'want');
+    Route::patch('wants/{want}/status', [WantsController::class, 'updateStatus'])->name('wants.status');
+    Route::patch('wants/{want}/reorder', [WantsController::class, 'reorder'])->name('wants.reorder');
 });
 
 require __DIR__.'/settings.php';
